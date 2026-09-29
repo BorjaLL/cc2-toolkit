@@ -135,3 +135,22 @@ log after sending. It cannot see the bed: clear it first.
 Things that were repo-private in the original setup and are not here: project
 folders, gcode approval bookkeeping, a per-file manifest of what is on the
 printer, and a GUI trace helper.
+
+## Using the tools from your own scripts
+
+The tools can be imported and extended instead of copied, so fixes stay in one
+place. Nothing below changes the command-line behaviour.
+
+- `slice_cc2.main(argv=None, hooks=None)`: `hooks` is any object with optional
+  `add_arguments(ap)` (add options, change defaults), `prepare(a)` (after the
+  argument checks, before output folders are made), `finish(a, plates, rc)`
+  (after a successful slice; `plates` is `[(gcode, "plate_N")]`, return the
+  possibly moved list) and `upload(pairs, force, allow_m600)` (replaces
+  `send_cc2.upload` for `--send`). Module values such as `FILAMENT`, `PROCESS`,
+  `QUALITY`, `ACCEL`, `resolve_leaf()` and `flatten()` can be used directly.
+- `send_cc2.send(..., skip_same=True)` skips a file already on the printer with
+  the same MD5 instead of refusing; `send()` returns the MD5 when it uploaded.
+- `send_cc2.start(c, name, force_start, slot_map=None, level=True)`:
+  `slot_map` `{tool: slot 1-4}` maps every tool the G-code uses to a CANVAS
+  slot (only slot 1 has been verified); `level=False` skips bed levelling.
+  `send_cc2.pty(c, lines)` types gcode lines into the printer's gcode pty.

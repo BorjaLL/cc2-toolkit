@@ -291,7 +291,26 @@ def preflight_3mf(path, proc):
                   "--proc ironing_type=topmost (or no_ironing), a second copy or "
                   "its own plate (guides/gotchas.md item 6).")
 
-def main():
+def _hook(hooks, name):
+    return getattr(hooks, name, None) if hooks is not None else None
+
+
+def main(argv=None, hooks=None):
+    """Command-line entry point. argv: argument list (default sys.argv[1:]).
+
+    hooks: optional object for wrapper scripts that reuse this module (for example
+    a private repo that files the G-code into its own folders). Any of these
+    attributes may be set, all are optional and the default run uses none:
+        add_arguments(ap)        add or change argparse options (e.g. ap.set_defaults)
+        prepare(a)               called after the argument checks, before --out is
+                                 defaulted and output folders are created
+        finish(a, plates, rc)    called after slicing when the slicer exits 0 (plates:
+                                 [(gcode path, 'plate_N')], after M600 stripping and the
+                                 --name rename); returns the (possibly moved) plate list
+        upload(pairs, force, allow_m600)
+                                 used by --send instead of send_cc2.upload; pairs are
+                                 [(local gcode, remote name)]
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("model", nargs="?", help="input model (.3mf/.stl); omit only with --verify")
     ap.add_argument("more", nargs="*", help="extra model files sliced together with the first "
@@ -379,7 +398,9 @@ def main():
     ap.add_argument("--verify", action="store_true",
                     help="self-test the vendor-scoped resolver against stock Elegoo "
                          "PLA @ECC2 (flow 0.98 / aux 0 / min fan 50) and exit")
-    a = ap.parse_args()
+    if _hook(hooks, "add_arguments"):
+        hooks.add_arguments(ap)
+    a = ap.parse_args(argv)
 
     if a.pure_stock and a.accel != "stock":
         ap.error("--pure-stock cannot be combined with --accel " + a.accel)
@@ -413,6 +434,8 @@ def main():
         slot_specs.append((int(n), rest.split(":")))
     if not 1 <= a.slots <= 4:
         sys.exit(f"--slots {a.slots}: must be 1..4 (the CANVAS has 4 slots)")
+    if _hook(hooks, "prepare"):
+        hooks.prepare(a)
     if a.out is None:
         a.out = os.path.join(os.getcwd(), "cc2_out")
     work = os.path.join(a.out, "_profiles")
@@ -562,8 +585,10 @@ def main():
     plates = [(g, os.path.splitext(os.path.basename(g))[0]) for g in sorted(gcodes)]  # (file, "plate_1")
     if a.name and gcodes and rc == 0:
         plates = move_to_name(a, plates, a.out)
-    if a.send is not None and gcodes and rc == 0:
-        send_to_printer(a, plates)
+    if rc == 0 and _hook(hooks, "finish"):
+        plates = hooks.finish(a, plates, rc)
+    if a.send is not None and plates and rc == 0:
+        send_to_printer(a, plates, _hook(hooks, "upload"))
     sys.exit(rc)
 
 
@@ -584,10 +609,14 @@ def move_to_name(a, plates, dest):
     return out
 
 
-def send_to_printer(a, plates):
-    """plates: [(G-code path, 'plate_N')] (the plate label survives --name renames)."""
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import send_cc2
+def send_to_printer(a, plates, upload=None):
+    """plates: [(G-code path, 'plate_N')] (the plate label survives --name renames).
+    upload: callable(pairs, force, allow_m600); default send_cc2.upload."""
+    if upload is None:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import send_cc2
+        upload = lambda pairs, force, allow_m600: send_cc2.upload(
+            pairs, force=force, allow_m600=allow_m600)
     stem = a.send[:-6] if a.send.lower().endswith(".gcode") else a.send
     stem = stem or os.path.splitext(os.path.basename(a.model))[0]
     gcodes = [g for g, _ in plates]
@@ -595,7 +624,7 @@ def send_to_printer(a, plates):
     for g, plate in plates:
         name = stem if len(gcodes) == 1 else f"{stem}_{plate.replace('_', '')}"
         pairs.append((g, name + ".gcode"))
-    send_cc2.upload(pairs, force=True, allow_m600=a.keep_pauses)
+    upload(pairs, True, a.keep_pauses)
 
 if __name__ == "__main__":
     main()

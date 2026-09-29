@@ -104,14 +104,22 @@ def check_file(path, allow_m600):
 
 # ---- send -------------------------------------------------------------------
 
-def send(c, sftp, path, name, force, allow_m600):
+def send(c, sftp, path, name, force, allow_m600, skip_same=False):
+    """Upload one file. Returns its md5 when uploaded, None when skipped.
+    skip_same: if the remote file exists with the same md5, skip it instead of
+    refusing (without force an existing different file is still refused)."""
     check_file(path, allow_m600)
     valid_name(name)
     remote = posixpath.join(DEST, name)
     try:
         sftp.stat(remote)
         if not force:
-            sys.exit(f"{name} already on printer. Pass --force to overwrite.")
+            if skip_same and run(c, f"md5sum {shlex.quote(remote)}")[0].split()[:1] == [md5(path)]:
+                print(f"{name} already on printer (same md5), not re-sending")
+                return None
+            sys.exit(f"{name} already on printer"
+                     + (" (different file)" if skip_same else "")
+                     + ". Pass --force to overwrite.")
     except FileNotFoundError:
         pass
     size = os.path.getsize(path)
@@ -133,6 +141,7 @@ def send(c, sftp, path, name, force, allow_m600):
         sys.exit(f"{name}: MD5 mismatch after upload, removed. Retry.")
     run(c, f"mv {shlex.quote(tmp)} {shlex.quote(remote)} && sync")
     print(f"sent {name} ({size / 1e6:.1f} MB, md5 ok) -> {remote}")
+    return local_md5
 
 
 def upload(pairs, host=None, force=False, allow_m600=False):
@@ -158,11 +167,41 @@ def list_files(c):
     print(run(c, "df -h /opt/usr | tail -1")[0].split()[3], "free")
 
 
-def start(c, name, force_start=False):
+def pty(c, lines):
+    """Type gcode lines into elegoo_printer's gcode pty /dev/pts/0, 1 s apart.
+    Nothing reads the pty's output: check results in /opt/usr/logs/elegoo.log."""
+    run(c, "; ".join(f"printf '%s\\n' {shlex.quote(l)} > /dev/pts/0; sleep 1" for l in lines))
+
+
+def color_table(c, path, slot_map):
+    """CANVAS_SET_COLOR_TABLE line mapping every tool the G-code uses (T0..T3) to a
+    CANVAS slot: slot_map {tool: slot 1-4}, missing tools default to tool N -> slot N+1.
+    Colours come from the G-code's filament_colour line."""
+    q = shlex.quote(path)
+    tools = sorted({int(t) for t in run(c, f"grep -o '^T[0-9]' {q} | sort -u | tr -d T")[0].split()}) or [0]
+    cols = run(c, f"grep -m1 '^; filament_colour =' {q}")[0].split("=", 1)[-1].strip().split(";")
+    chans, colours = [], []
+    for t in tools:
+        slot = slot_map.get(t, t + 1)
+        if not 1 <= slot <= 4:
+            sys.exit(f"T{t}: slot {slot} is not 1-4")
+        chans.append(str(slot - 1))
+        col = cols[t] if t < len(cols) and re.match(r"#[0-9A-Fa-f]{6}", cols[t]) else "#FFFFFF"
+        colours.append(hex(int(col[1:7], 16)))
+    return (f"CANVAS_SET_COLOR_TABLE T={','.join(map(str, tools))} "
+            f"CHANNEL={','.join(chans)} COLOR={','.join(colours)}")
+
+
+def start(c, name, force_start=False, slot_map=None, level=True):
     """Start a print by typing the touchscreen's own start sequence (copied from
-    gui.log) into elegoo_printer's gcode pty /dev/pts/0. Single colour, CANVAS slot 1.
+    gui.log) into elegoo_printer's gcode pty /dev/pts/0.
     Verified on stock OTA 01.03.02.36 with CANVAS slot 1 only. Fails closed: refuses
-    if the state log is unreadable (unless force_start) or the pty is not a char device."""
+    if the state log is unreadable (unless force_start) or the pty is not a char device.
+
+    slot_map: None (default) = single colour, CANVAS slot 1. A dict {tool: slot 1-4}
+    (may be empty) maps every tool the G-code uses instead, see color_table().
+    level: True (default) runs the G-code's bed levelling (BED_MESH_CALIBRATE, ~5 min);
+    False skips it and uses the saved mesh, like the screen's levelling toggle off."""
     valid_name(name)
     state = run(c, "grep -a 'handle_print_state print_state:' /opt/usr/logs/elegoo.log | tail -1")[0]
     if "print_state:" not in state:
@@ -179,14 +218,18 @@ def start(c, name, force_start=False):
     path = posixpath.join(DEST, name)
     if run(c, f"[ -f {shlex.quote(path)} ] && echo ok")[0].strip() != "ok":
         sys.exit(f"not on printer: {path}")
+    table = ("CANVAS_SET_COLOR_TABLE T=0 CHANNEL=0 COLOR=0xffffff" if slot_map is None
+             else color_table(c, path, slot_map))
+    if slot_map is not None:
+        print("  " + table)
     lines = ["PRINT_SURFACE_SET PLANE=0",
-             "BED_MESH_CALIBRATE_SET EXECUTE_CALIBRATE_FROM_SLICER=1",
+             f"BED_MESH_CALIBRATE_SET EXECUTE_CALIBRATE_FROM_SLICER={int(bool(level))}",
              "USED_CANVAS_DEV USED_CANVAS=1",
-             "CANVAS_SET_COLOR_TABLE T=0 CHANNEL=0 COLOR=0xffffff",
+             table,
              f'SDCARD_PRINT_FILE FILENAME="local/{name}" SLICE_CFG_MODEL=1 AUTO_DETECT=0']
     count = "grep -ac 'cmd_SDCARD_PRINT_FILE' /opt/usr/logs/elegoo.log"
     before = int(run(c, count)[0].strip() or 0)
-    run(c, "; ".join(f"printf '%s\\n' {shlex.quote(l)} > /dev/pts/0; sleep 1" for l in lines))
+    pty(c, lines)
     out = run(c, f"sleep 3; {count}; grep -a 'cmd_SDCARD_PRINT_FILE' /opt/usr/logs/elegoo.log | tail -1")[0]
     first, _, last = out.partition("\n")
     # only a NEW cmd_SDCARD_PRINT_FILE line (count grew since before we sent) counts
