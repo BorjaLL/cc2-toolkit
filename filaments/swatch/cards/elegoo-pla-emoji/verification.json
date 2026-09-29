@@ -1,0 +1,126 @@
+{
+  "slicer": "ElegooSlicer via tools/slice_cc2.py card.stl --filament pla --layer 0.20 --no-brim --no-arrange --proc ironing_type=topmost --temp 210 --flow 1.00 --fil filament_retraction_length=0.8 --proc ironing_speed=25 --proc ironing_flow=25%",
+  "command": "python filaments/swatch/build_swatch.py elegoo-pla-emoji",
+  "filament_md": "filaments/elegoo-pla-emoji.md",
+  "values_on_card": {
+    "slug": "elegoo-pla-emoji",
+    "md": "filaments/elegoo-pla-emoji.md",
+    "slicer_key": "pla",
+    "temp": 210,
+    "flow": 1.0,
+    "retraction": 0.8,
+    "tolerance": 0.2,
+    "ironing": [
+      25,
+      25
+    ],
+    "colour": "white",
+    "label": "Elegoo PLA emoji",
+    "material": "PLA",
+    "date": "2026-09-27",
+    "stock_used": []
+  },
+  "card_mm": [
+    76.0,
+    46.0,
+    1.8
+  ],
+  "mesh": {
+    "triangles": 14108,
+    "volume_mm3": 3683.2,
+    "grams_at_1.24": 4.57,
+    "bounds": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        76.0,
+        46.0,
+        1.8
+      ]
+    ]
+  },
+  "stl": "card.stl",
+  "stl_sha256": "18cfea025af14d7608ac7b3ba588b400a7138c4747257ba72ad325636af04b82",
+  "gcode": "CC2_Swatch_elegoo-pla-emoji.gcode",
+  "gcode_sha256": "2c87a2fe0c6c8f277d3110ff0b8cbb4d012bc91721e7172f27fff325b325d1d1",
+  "validation": {
+    "nozzle_temp_c": 210,
+    "flow": 1.0,
+    "retraction_mm_effective": 0.8,
+    "ironing": {
+      "speed": "25",
+      "flow": "25%",
+      "spacing": "0.15"
+    },
+    "ironing_only_at_z": [
+      1.8
+    ],
+    "ironing_moves": 178,
+    "ironing_path_mm": 633,
+    "layers": 9,
+    "extrusion_z_mm": [
+      0.2,
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2,
+      1.4,
+      1.6,
+      1.8
+    ],
+    "extrusion_moves_by_type": {
+      "Inner wall": 3057,
+      "Outer wall": 6375,
+      "Bottom surface": 906,
+      "Gap infill": 1350,
+      "Overhang wall": 29,
+      "Internal solid infill": 4794,
+      "Top surface": 5206,
+      "Bridge": 40,
+      "Sparse infill": 40,
+      "Internal Bridge": 44,
+      "Ironing": 178
+    },
+    "label_row_clearance_mm": [
+      0.642,
+      0.652
+    ],
+    "printed_bounds_xy_mm": [
+      [
+        90.21,
+        165.79
+      ],
+      [
+        103.71,
+        149.29
+      ]
+    ],
+    "printed_size_mm": [
+      75.58,
+      45.58
+    ],
+    "grams_from_e": 4.53,
+    "slicer_estimate": {
+      "estimated printing time (normal mode)": "20m 33s",
+      "total filament used [g]": "5.06",
+      "total layers count": "9"
+    },
+    "estimated_minutes": 20.6,
+    "m600_count": 0,
+    "tools": [
+      "T0"
+    ]
+  },
+  "raw_gcode_kept_at": "<tmp>/cc2-swatch-5izre76y",
+  "budget": {
+    "grams_target": "3-6",
+    "minutes_target": "< 20",
+    "grams_ok": true,
+    "minutes_ok": false
+  },
+  "physical_print_tested": false
+}

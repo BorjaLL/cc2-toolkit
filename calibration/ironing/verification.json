@@ -1,0 +1,94 @@
+{
+  "slicer": "ElegooSlicer via tools/slice_cc2.py",
+  "filament": "pla",
+  "geometry": {
+    "span_mm": 138.0,
+    "pads": 25,
+    "top_z_mm": 1.2,
+    "triangles": 34452
+  },
+  "axes": {
+    "rows_speed_mm_s_+Y": [
+      19,
+      22,
+      25,
+      28,
+      31
+    ],
+    "cols_flow_pct_+X": [
+      19,
+      22,
+      25,
+      28,
+      31
+    ]
+  },
+  "base_flow_pct": 15.0,
+  "gcode": "CC2_IroningGrid_PLA_speed19-31_flow19-31.gcode",
+  "gcode_sha256": "daa378bdda0d4c84aa81a56b2b5763b2b22e79464fbab03905a74576f5c55571",
+  "validation": {
+    "speeds_mm_s": [
+      19,
+      22,
+      25,
+      28,
+      31
+    ],
+    "flows_pct": [
+      19,
+      22,
+      25,
+      28,
+      31
+    ],
+    "moves_per_cell": [
+      [
+        330,
+        328,
+        329,
+        328,
+        330
+      ],
+      [
+        329,
+        330,
+        328,
+        330,
+        331
+      ],
+      [
+        328,
+        327,
+        330,
+        331,
+        327
+      ],
+      [
+        328,
+        330,
+        331,
+        328,
+        330
+      ],
+      [
+        330,
+        330,
+        327,
+        329,
+        328
+      ]
+    ],
+    "base_slab_iron_moves": 2494,
+    "origin_mm": [
+      64.907,
+      52.708
+    ],
+    "top_z_mm": 1.2,
+    "grid_span_mm": 137.5
+  },
+  "statistics": [
+    "; total filament used [g] = 15.59",
+    "; estimated printing time (normal mode) = 2h 17m 38s"
+  ],
+  "physical_print_tested": false
+}

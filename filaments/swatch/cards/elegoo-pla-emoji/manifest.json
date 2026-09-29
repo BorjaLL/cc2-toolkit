@@ -1,0 +1,485 @@
+{
+ "card": {
+  "w": 76.0,
+  "h": 46.0,
+  "corner_r": 3.0,
+  "rim_w": 2.0,
+  "rim_z": 1.6,
+  "body_z": 0.8,
+  "plateau_z": 1.6,
+  "max_z": 1.8
+ },
+ "checks": [
+  {
+   "n": 1,
+   "name": "label",
+   "box": [
+    3.0,
+    29.5,
+    72.0,
+    44.0
+   ],
+   "what": "recessed text, 0.4 deep, in the plateau's plain monotonic top (Z 1.6, not ironed)"
+  },
+  {
+   "n": 2,
+   "name": "top surface",
+   "box": [
+    44.5,
+    15.5,
+    53.5,
+    27.0
+   ],
+   "what": "the only surface at the top Z (1.8): ironed with the filament's values; compare with the plateau"
+  },
+  {
+   "n": 3,
+   "name": "translucency",
+   "steps": [
+    {
+     "layers": 1,
+     "floor_mm": 0.2,
+     "box": [
+      3.0,
+      16.0,
+      8.0,
+      28.0
+     ]
+    },
+    {
+     "layers": 2,
+     "floor_mm": 0.4,
+     "box": [
+      8.0,
+      16.0,
+      13.0,
+      28.0
+     ]
+    },
+    {
+     "layers": 3,
+     "floor_mm": 0.6,
+     "box": [
+      13.0,
+      16.0,
+      18.0,
+      28.0
+     ]
+    },
+    {
+     "layers": 4,
+     "floor_mm": 0.8,
+     "box": [
+      18.0,
+      16.0,
+      23.0,
+      28.0
+     ]
+    },
+    {
+     "layers": 5,
+     "floor_mm": 1.0,
+     "box": [
+      23.0,
+      16.0,
+      28.0,
+      28.0
+     ]
+    }
+   ],
+   "box": [
+    3.0,
+    16.0,
+    28.0,
+    28.0
+   ],
+   "what": "1-5 layers thick (step 4 = the body, step 5 stands one layer proud), labelled with the layer count"
+  },
+  {
+   "n": 4,
+   "name": "text ladder",
+   "items": [
+    {
+     "style": "recessed",
+     "cap_mm": 2.0,
+     "x": 29.5,
+     "width": 1.55,
+     "stroke_mm": 0.38
+    },
+    {
+     "style": "recessed",
+     "cap_mm": 2.5,
+     "x": 32.25,
+     "width": 5.27,
+     "stroke_mm": 0.48
+    },
+    {
+     "style": "recessed",
+     "cap_mm": 3.0,
+     "x": 38.73,
+     "width": 2.33,
+     "stroke_mm": 0.58
+    },
+    {
+     "style": "raised",
+     "cap_mm": 2.5,
+     "x": 29.5,
+     "width": 5.27,
+     "stroke_mm": 0.48
+    },
+    {
+     "style": "raised",
+     "cap_mm": 3.5,
+     "x": 35.97,
+     "width": 7.38,
+     "stroke_mm": 0.67
+    }
+   ],
+   "box": [
+    29.0,
+    16.2,
+    43.5,
+    26.9
+   ],
+   "what": "each digit is its own cap height: top row recessed, bottom row raised"
+  },
+  {
+   "n": 5,
+   "name": "bridge",
+   "bars": [
+    {
+     "y0": 15.5,
+     "y1": 18.5,
+     "span_mm": 17.0,
+     "z": [
+      0.4,
+      0.8
+     ]
+    },
+    {
+     "y0": 19.5,
+     "y1": 22.5,
+     "span_mm": 17.0,
+     "z": [
+      0.4,
+      0.8
+     ]
+    }
+   ],
+   "box": [
+    55.0,
+    15.0,
+    72.0,
+    22.5
+   ],
+   "what": "two 3 mm bars over a 17 mm window, 2 layers at Z 0.4-0.8"
+  },
+  {
+   "n": 6,
+   "name": "overhang",
+   "tongues": [
+    {
+     "step_mm_per_layer": 0.2,
+     "angle_deg": 45.0,
+     "x0": 58.6,
+     "x1": 60.6,
+     "reach_mm": 1.4
+    },
+    {
+     "step_mm_per_layer": 0.3,
+     "angle_deg": 56.3,
+     "x0": 61.2,
+     "x1": 63.2,
+     "reach_mm": 2.1
+    },
+    {
+     "step_mm_per_layer": 0.4,
+     "angle_deg": 63.4,
+     "x0": 63.8,
+     "x1": 65.8,
+     "reach_mm": 2.8
+    },
+    {
+     "step_mm_per_layer": 0.5,
+     "angle_deg": 68.2,
+     "x0": 66.4,
+     "x1": 68.4,
+     "reach_mm": 3.5
+    }
+   ],
+   "lip": [
+    54.0,
+    27.0,
+    73.0,
+    29.0
+   ],
+   "box": [
+    58.6,
+    23.4,
+    68.4,
+    27.0
+   ],
+   "what": "tongues step out per layer from the lip: 45/56/63/68 deg, read the underside"
+  },
+  {
+   "n": 7,
+   "name": "thin walls",
+   "fins": [
+    {
+     "width_mm": 0.4,
+     "x0": 4.0
+    },
+    {
+     "width_mm": 0.6,
+     "x0": 6.4
+    },
+    {
+     "width_mm": 0.8,
+     "x0": 9.0
+    },
+    {
+     "width_mm": 1.0,
+     "x0": 11.8
+    },
+    {
+     "width_mm": 1.2,
+     "x0": 14.8
+    }
+   ],
+   "box": [
+    3.0,
+    3.0,
+    17.0,
+    12.0
+   ],
+   "what": "fins 0.4-1.2 mm, 0.8 tall, thinnest on the left"
+  },
+  {
+   "n": 8,
+   "name": "small holes",
+   "holes": [
+    {
+     "dia_mm": 1.0,
+     "x": 20.5,
+     "y": 8.0
+    },
+    {
+     "dia_mm": 1.5,
+     "x": 23.9,
+     "y": 8.0
+    },
+    {
+     "dia_mm": 2.0,
+     "x": 27.3,
+     "y": 8.0
+    },
+    {
+     "dia_mm": 2.2,
+     "x": 30.7,
+     "y": 8.0
+    },
+    {
+     "dia_mm": 2.3,
+     "x": 34.1,
+     "y": 8.0
+    },
+    {
+     "dia_mm": 2.4,
+     "x": 37.5,
+     "y": 8.0
+    }
+   ],
+   "box": [
+    19.0,
+    6.5,
+    39.0,
+    9.5
+   ],
+   "what": "1.0-2.4 mm through holes for a 1.75 filament pin; 2.2 friction, 2.3 free on the CC2"
+  },
+  {
+   "n": 9,
+   "name": "pins",
+   "pins": [
+    {
+     "dia_mm": 0.8,
+     "x": 41.0,
+     "y": 8.0,
+     "z": [
+      0.8,
+      1.4
+     ]
+    },
+    {
+     "dia_mm": 1.2,
+     "x": 43.5,
+     "y": 8.0,
+     "z": [
+      0.8,
+      1.4
+     ]
+    },
+    {
+     "dia_mm": 1.6,
+     "x": 46.0,
+     "y": 8.0,
+     "z": [
+      0.8,
+      1.4
+     ]
+    }
+   ],
+   "box": [
+    39.8,
+    6.5,
+    47.2,
+    9.5
+   ],
+   "what": "0.8 / 1.2 / 1.6 mm posts, 0.6 mm tall"
+  },
+  {
+   "n": 10,
+   "name": "wall / layers",
+   "box": [
+    48.0,
+    4.0,
+    58.0,
+    12.0
+   ],
+   "fin": [
+    47.5,
+    7.5,
+    58.5,
+    8.5
+   ],
+   "fin_z": 1.6,
+   "what": "1.0 mm fin, 1.6 mm tall (8 layers): local layer quality with light behind it (too short for periodic banding)"
+  },
+  {
+   "n": 11,
+   "name": "tolerance",
+   "slots": [
+    {
+     "x": 62.5,
+     "width_mm": 2.0,
+     "gap_per_side_mm": 0.2,
+     "depth_mm": 9.0,
+     "label": "0.2"
+    },
+    {
+     "x": 69.5,
+     "width_mm": 1.8,
+     "gap_per_side_mm": 0.1,
+     "depth_mm": 9.0,
+     "label": "0.1"
+    }
+   ],
+   "nominal_mm": 1.6,
+   "tolerance_from_frontmatter": true,
+   "box": [
+    59.5,
+    0,
+    72.5,
+    12.9
+   ],
+   "what": "comparison notches for another card's 1.6 mm top edge: label = gap per side (calibrated value, and 0.1 tighter); note which slides, measure before calling it pass/fail"
+  }
+ ],
+ "texts": [],
+ "label": {
+  "plateau": [
+   3.0,
+   29.5,
+   72.0,
+   44.0
+  ],
+  "top_z": 1.6,
+  "recess_z": 1.2000000000000002,
+  "ironed": false,
+  "row_clearance_mm": [
+   0.642,
+   0.652
+  ],
+  "lines": [
+   {
+    "line": 1,
+    "text": "Elegoo PLA emoji white",
+    "cap_mm": 3.6,
+    "width_mm": 63.34,
+    "stroke_mm": 0.69,
+    "baseline_y": 39.2,
+    "ink_y": [
+     38.143,
+     42.8
+    ],
+    "style": "recessed 0.4 mm into the plateau top"
+   },
+   {
+    "line": 2,
+    "text": "210C F1.00 R0.8 IR25/25",
+    "cap_mm": 3.0,
+    "width_mm": 53.29,
+    "stroke_mm": 0.58,
+    "baseline_y": 34.492,
+    "ink_y": [
+     34.438,
+     37.543
+    ],
+    "style": "recessed 0.4 mm into the plateau top"
+   },
+   {
+    "line": 3,
+    "text": "TOL 0.2 2026-09-27",
+    "cap_mm": 3.0,
+    "width_mm": 42.25,
+    "stroke_mm": 0.58,
+    "baseline_y": 30.787,
+    "ink_y": [
+     30.736,
+     33.838
+    ],
+    "style": "recessed 0.4 mm into the plateau top"
+   }
+  ]
+ },
+ "mesh": {
+  "triangles": 14108,
+  "volume_mm3": 3683.2,
+  "grams_at_1.24": 4.57,
+  "bounds": [
+   [
+    0.0,
+    0.0,
+    0.0
+   ],
+   [
+    76.0,
+    46.0,
+    1.8
+   ]
+  ]
+ },
+ "values": {
+  "slug": "elegoo-pla-emoji",
+  "md": "filaments/elegoo-pla-emoji.md",
+  "slicer_key": "pla",
+  "temp": 210,
+  "flow": 1.0,
+  "retraction": 0.8,
+  "tolerance": 0.2,
+  "ironing": [
+   25,
+   25
+  ],
+  "colour": "white",
+  "label": "Elegoo PLA emoji",
+  "material": "PLA",
+  "date": "2026-09-27",
+  "stock_used": []
+ },
+ "font": "C:/Windows/Fonts/arialbd.ttf",
+ "bed_shift_mm": [
+  90.0,
+  105.0
+ ]
+}

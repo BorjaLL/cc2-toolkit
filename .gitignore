@@ -1,0 +1,9 @@
+# generator / slicer output
+cc2_out/
+*.log
+__pycache__/
+*.pyc
+.cache/
+# local secrets
+.env
+.cc2.json

@@ -1,0 +1,15 @@
+{
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"1"
+	],
+	"filament_settings_id": [
+		"Elegoo PLA emoji (calibrated)"
+	],
+	"from": "User",
+	"inherits": "Elegoo PLA @ECC2",
+	"name": "Elegoo PLA emoji (calibrated)",
+	"version": "1.5.3.5"
+}

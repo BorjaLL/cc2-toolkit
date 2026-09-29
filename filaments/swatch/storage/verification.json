@@ -1,0 +1,494 @@
+{
+  "card_dimensions": {
+    "width_mm": 76.0,
+    "height_mm": 46.0,
+    "thickness_mm": 1.8,
+    "label_edge": "top",
+    "corner_radius_mm": 3.0,
+    "rim": {
+      "width_mm": 2.0,
+      "height_mm": 1.6
+    },
+    "body_thickness_mm": 0.8,
+    "label_strip": {
+      "edge": "top",
+      "depth_from_edge_mm": 16.5,
+      "x_from_mm": 3.0,
+      "x_to_mm": 72.0,
+      "top_z_mm": 1.6
+    },
+    "thickest_feature": {
+      "what": "ironed pad, 9 x 11.5 mm, centred at x 49 / y 21 (middle of the card, > 15 mm from any edge)",
+      "z_mm": 1.8
+    },
+    "edge_thickness_mm": 1.6,
+    "bottom_edge_notches": {
+      "count": 2,
+      "depth_mm": 9.0,
+      "widths_mm_current": [
+        2.0,
+        1.8
+      ],
+      "width_rule": "1.6 + 2 x gap per side, gap = the filament's tolerance_free_at_mm and that minus 0.1 (so 1.8-2.4 over gaps 0.1-0.4)",
+      "x_centres_mm": [
+        62.5,
+        69.5
+      ]
+    },
+    "notes": "Card lies flat on the bed, 76 (X) x 46 (Y). Label (brand/material/colour, temp, flow, retraction, ironing, tolerance, date) = recessed text in a 1.6 mm plateau along the TOP long edge (x 3-72, top 16.5 mm of the face): a box should expose at least the top 17 mm of each card. Max thickness 1.8 (one 9 x 11.5 ironed pad mid-card); every edge is 1.6 thick (rim 2 mm wide x 1.6 tall, label plateau 1.6); body 0.8. Nothing below Z 0 or above 1.8. Bottom long edge has two open tolerance notches (2.0 and 1.8 wide on the emoji card, 9 deep, at x 62.5 and 69.5), fine to stand on. Stand on the bottom long edge (label up) or the right short edge. Slot pitch suggestion: 3.0 mm (1.8 card + 1.2 clearance), slot width >= 2.2. Through-windows in the body mean a card does not sit perfectly flat against a neighbour, but the rims keep it 1.6 at the edges. 76 fits a Gridfinity 2x1 bin standing lengthwise (inner >= 78 needed)."
+  },
+  "dims_sha256": "69a030416e6075142b91e318e0e40a0daf2605071942aea88bfe8a123ccc3cc4",
+  "generator_sha256": "5e16181ac38d02aa527c75f10e1aba99f4f1ac54abe39c22cfb58b6a65161e5f",
+  "physical_print_tested": false,
+  "models": {
+    "box_a": {
+      "capacity": 12,
+      "dimensions_mm": [
+        82.8,
+        149.4,
+        14.0
+      ],
+      "floor_z_mm": 1.0,
+      "floor_thickness_mm": 1.0,
+      "slot_width_mm": 2.4,
+      "slot_pitch_mm": 10.6,
+      "edge_thickness_mm": 1.6,
+      "clearance_mm": 0.8,
+      "rib_width_mm": null,
+      "angle_from_vertical_deg": 30.0,
+      "visible_face_strip_from_above_mm": 18.082308546376023,
+      "label_strip_required_mm": 17.0,
+      "inner_length_mm": 78.0,
+      "lateral_play_mm": 2.0,
+      "rib_length_mm": 3.9999999999999987,
+      "centered_side_engagement_mm": 3.0,
+      "worst_case_side_engagement_mm": 1.9999999999999987,
+      "minimum_side_engagement_mm": 2.0,
+      "first_slot_y_mm": 4.785640646055102,
+      "rail_inner_x_mm": 6.399999999999999,
+      "chamfer_horizontal_mm": 0.6,
+      "chamfer_height_mm": 0.8,
+      "grid": null,
+      "height_units": null,
+      "magnets": false,
+      "stacking_lip": false,
+      "loaded_height_mm": 41.73716857408418,
+      "loaded_rear_y_mm": 145.42487113059642,
+      "watertight": true,
+      "connected_components": 1,
+      "volume_mm3": 36186.39694904825,
+      "mesh_fits_bed": true,
+      "real_card_collision_checked": true,
+      "card_holder_intersection_mm3": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "lateral_extreme_card_holder_intersection_mm3": {
+        "left": [
+          0.0,
+          2.3684757858670005e-15,
+          0.0,
+          0.0,
+          0.0,
+          -2.3684757858670005e-15,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          9.473903143468002e-15,
+          0.0,
+          -1.8947806286936004e-14,
+          0.0,
+          0.0,
+          1.8947806286936004e-14,
+          1.8947806286936004e-14,
+          9.473903143468002e-15,
+          9.473903143468002e-15,
+          1.8947806286936004e-14,
+          1.8947806286936004e-14,
+          9.473903143468002e-15
+        ]
+      },
+      "adjacent_cards_intersection_mm3": 0.0,
+      "stl": "CC2_SwatchBoxA_12cards.stl",
+      "stl_sha256": "47a47a2637a74b34f0ae68fe56b04d9598a3a4700316ff20d6b253366d0a35ea",
+      "gcode": "CC2_SwatchBoxA_12cards.gcode",
+      "slicing_command": [
+        "python",
+        "-B",
+        "tools/slice_cc2.py",
+        "filaments/swatch/storage/CC2_SwatchBoxA_12cards.stl",
+        "--filament",
+        "pla",
+        "--no-iron",
+        "--no-brim",
+        "--no-arrange",
+        "--proc",
+        "enable_support=0",
+        "--proc",
+        "top_shell_layers=3",
+        "--proc",
+        "top_shell_thickness=0.6",
+        "--out",
+        "<tmp>/swatch-storage-box_a-_oh2mz5l"
+      ],
+      "slicer": {
+        "time": "1h 11m 6s",
+        "seconds": 4266.0,
+        "grams": 32.06,
+        "m600_count": 0,
+        "support_toolpath_sections": 0,
+        "gcode_sha256": "1b00461002289b65c80742f9ff09c4c410f6c25ec6fb47ec6946bfd0926be7ed",
+        "enable_support": "0",
+        "ironing_type": "no ironing",
+        "default_acceleration": "3000",
+        "outer_wall_acceleration": "2000",
+        "top_surface_acceleration": "1500",
+        "outer_wall_speed": "120",
+        "layer_height": "0.2",
+        "wall_loops": "2",
+        "top_shell_layers": "3",
+        "bottom_shell_layers": "3",
+        "extrusion_bounds_xyz_mm": [
+          [
+            53.51,
+            85.31,
+            0.2
+          ],
+          [
+            202.49,
+            167.69,
+            14.0
+          ]
+        ],
+        "extrusion_fits_256_bed": true,
+        "tools": [
+          "T0"
+        ],
+        "sliced_height_matches_mesh": true
+      }
+    },
+    "bin_b": {
+      "capacity": 22,
+      "dimensions_mm": [
+        83.5,
+        83.5,
+        21.0
+      ],
+      "floor_z_mm": 5.75,
+      "floor_thickness_mm": 1.0,
+      "slot_width_mm": 2.4,
+      "slot_pitch_mm": 3.4,
+      "edge_thickness_mm": 1.6,
+      "clearance_mm": 0.8,
+      "rib_width_mm": 1.0,
+      "angle_from_vertical_deg": 0,
+      "visible_face_strip_from_above_mm": null,
+      "label_strip_required_mm": 17.0,
+      "inner_length_mm": 79.0,
+      "lateral_play_mm": 3.0,
+      "rib_length_mm": 5.5,
+      "centered_side_engagement_mm": 4.0,
+      "worst_case_side_engagement_mm": 2.5,
+      "minimum_side_engagement_mm": 2.5,
+      "first_slot_y_mm": 6.050000000000004,
+      "rail_inner_x_mm": 7.75,
+      "chamfer_horizontal_mm": 0.2,
+      "chamfer_height_mm": 0.8,
+      "grid": [
+        2,
+        2
+      ],
+      "height_units": 3,
+      "magnets": false,
+      "stacking_lip": false,
+      "loaded_height_mm": 51.75,
+      "loaded_rear_y_mm": 78.35,
+      "base_profile": {
+        "grid_pitch_mm": 42,
+        "profile_height_mm": 4.75,
+        "z_levels_mm": [
+          0,
+          0.8,
+          2.6,
+          4.75
+        ],
+        "square_widths_mm": [
+          35.6,
+          37.2,
+          37.2,
+          41.5
+        ],
+        "corner_radii_mm": [
+          0.8,
+          1.6,
+          1.6,
+          3.75
+        ],
+        "magnets": false
+      },
+      "watertight": true,
+      "connected_components": 1,
+      "volume_mm3": 48392.28030753513,
+      "mesh_fits_bed": true,
+      "real_card_collision_checked": true,
+      "card_holder_intersection_mm3": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "lateral_extreme_card_holder_intersection_mm3": {
+        "left": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "adjacent_cards_intersection_mm3": 0.0,
+      "stl": "CC2_SwatchBinB_2x2_22cards.stl",
+      "stl_sha256": "28ccf59786a5c1ef34c7442afdfd01e58ca949768f88fef6427d4ab362e4a599",
+      "gcode": "CC2_SwatchBinB_2x2_22cards.gcode",
+      "slicing_command": [
+        "python",
+        "-B",
+        "tools/slice_cc2.py",
+        "filaments/swatch/storage/CC2_SwatchBinB_2x2_22cards.stl",
+        "--filament",
+        "pla",
+        "--no-iron",
+        "--no-brim",
+        "--no-arrange",
+        "--proc",
+        "enable_support=0",
+        "--proc",
+        "top_shell_layers=3",
+        "--proc",
+        "top_shell_thickness=0.6",
+        "--out",
+        "<tmp>/swatch-storage-bin_b-0gjejk0u"
+      ],
+      "slicer": {
+        "time": "1h 23m 18s",
+        "seconds": 4998.0,
+        "grams": 32.98,
+        "m600_count": 0,
+        "support_toolpath_sections": 0,
+        "gcode_sha256": "61b432048b1925db2e619b346394397dd342789b2e35d190f6354a3ba45852cc",
+        "enable_support": "0",
+        "ironing_type": "no ironing",
+        "default_acceleration": "3000",
+        "outer_wall_acceleration": "2000",
+        "top_surface_acceleration": "1500",
+        "outer_wall_speed": "120",
+        "layer_height": "0.2",
+        "wall_loops": "2",
+        "top_shell_layers": "3",
+        "bottom_shell_layers": "3",
+        "extrusion_bounds_xyz_mm": [
+          [
+            86.46,
+            84.96,
+            0.2
+          ],
+          [
+            169.54,
+            168.04,
+            21.0
+          ]
+        ],
+        "extrusion_fits_256_bed": true,
+        "tools": [
+          "T0"
+        ],
+        "sliced_height_matches_mesh": true
+      }
+    },
+    "coupon": {
+      "capacity": 1,
+      "dimensions_mm": [
+        82.8,
+        18.0,
+        14.0
+      ],
+      "floor_z_mm": 1.0,
+      "floor_thickness_mm": 1.0,
+      "slot_width_mm": 2.4,
+      "slot_pitch_mm": 10.6,
+      "edge_thickness_mm": 1.6,
+      "clearance_mm": 0.8,
+      "rib_width_mm": null,
+      "angle_from_vertical_deg": 30.0,
+      "visible_face_strip_from_above_mm": 18.082308546376023,
+      "label_strip_required_mm": 17.0,
+      "inner_length_mm": 78.0,
+      "lateral_play_mm": 2.0,
+      "rib_length_mm": 3.9999999999999987,
+      "centered_side_engagement_mm": 3.0,
+      "worst_case_side_engagement_mm": 1.9999999999999987,
+      "minimum_side_engagement_mm": 2.0,
+      "first_slot_y_mm": 4.785640646055102,
+      "rail_inner_x_mm": 6.399999999999999,
+      "chamfer_horizontal_mm": 0.6,
+      "chamfer_height_mm": 0.8,
+      "grid": null,
+      "height_units": null,
+      "magnets": false,
+      "stacking_lip": false,
+      "loaded_height_mm": 41.73716857408418,
+      "loaded_rear_y_mm": 28.824871130596428,
+      "purpose": "Full-width one-slot end section of Box A; real seating and lean test",
+      "watertight": true,
+      "connected_components": 1,
+      "volume_mm3": 5197.0791925874255,
+      "mesh_fits_bed": true,
+      "real_card_collision_checked": true,
+      "card_holder_intersection_mm3": [
+        0.0
+      ],
+      "lateral_extreme_card_holder_intersection_mm3": {
+        "left": [
+          0.0
+        ],
+        "right": [
+          0.0
+        ]
+      },
+      "adjacent_cards_intersection_mm3": 0.0,
+      "stl": "CC2_SwatchFitTest.stl",
+      "stl_sha256": "7bef705ac19919149c78ee0b7804ebc51f2faaaec6331c540e9d3275eab947b0",
+      "gcode": "CC2_SwatchFitTest.gcode",
+      "slicing_command": [
+        "python",
+        "-B",
+        "tools/slice_cc2.py",
+        "filaments/swatch/storage/CC2_SwatchFitTest.stl",
+        "--filament",
+        "pla",
+        "--no-iron",
+        "--no-brim",
+        "--no-arrange",
+        "--proc",
+        "enable_support=0",
+        "--proc",
+        "top_shell_layers=3",
+        "--proc",
+        "top_shell_thickness=0.6",
+        "--out",
+        "<tmp>/swatch-storage-coupon-xfl6shkn"
+      ],
+      "slicer": {
+        "time": "15m 0s",
+        "seconds": 900.0,
+        "grams": 5.32,
+        "m600_count": 0,
+        "support_toolpath_sections": 0,
+        "gcode_sha256": "fb6ff8c865d49af236a0f2c1ad1d02f99ca8f07b51f571ca3f49876bae47d685",
+        "enable_support": "0",
+        "ironing_type": "no ironing",
+        "default_acceleration": "3000",
+        "outer_wall_acceleration": "2000",
+        "top_surface_acceleration": "1500",
+        "outer_wall_speed": "120",
+        "layer_height": "0.2",
+        "wall_loops": "2",
+        "top_shell_layers": "3",
+        "bottom_shell_layers": "3",
+        "extrusion_bounds_xyz_mm": [
+          [
+            86.81,
+            117.71,
+            0.2
+          ],
+          [
+            169.19,
+            135.29,
+            14.0
+          ]
+        ],
+        "extrusion_fits_256_bed": true,
+        "tools": [
+          "T0"
+        ],
+        "sliced_height_matches_mesh": true
+      }
+    }
+  },
+  "source_card_sha256": "18cfea025af14d7608ac7b3ba588b400a7138c4747257ba72ad325636af04b82",
+  "preview_sha256": "33f4870a56f34d789bc0f290b165f777ecb16daea4d6e571ab94c7418487b961"
+}

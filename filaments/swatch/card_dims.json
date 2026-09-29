@@ -1,0 +1,14 @@
+{
+  "width_mm": 76.0,
+  "height_mm": 46.0,
+  "thickness_mm": 1.8,
+  "label_edge": "top",
+  "corner_radius_mm": 3.0,
+  "rim": {"width_mm": 2.0, "height_mm": 1.6},
+  "body_thickness_mm": 0.8,
+  "label_strip": {"edge": "top", "depth_from_edge_mm": 16.5, "x_from_mm": 3.0, "x_to_mm": 72.0, "top_z_mm": 1.6},
+  "thickest_feature": {"what": "ironed pad, 9 x 11.5 mm, centred at x 49 / y 21 (middle of the card, > 15 mm from any edge)", "z_mm": 1.8},
+  "edge_thickness_mm": 1.6,
+  "bottom_edge_notches": {"count": 2, "depth_mm": 9.0, "widths_mm_current": [2.0, 1.8], "width_rule": "1.6 + 2 x gap per side, gap = the filament's tolerance_free_at_mm and that minus 0.1 (so 1.8-2.4 over gaps 0.1-0.4)", "x_centres_mm": [62.5, 69.5]},
+  "notes": "Card lies flat on the bed, 76 (X) x 46 (Y). Label (brand/material/colour, temp, flow, retraction, ironing, tolerance, date) = recessed text in a 1.6 mm plateau along the TOP long edge (x 3-72, top 16.5 mm of the face): a box should expose at least the top 17 mm of each card. Max thickness 1.8 (one 9 x 11.5 ironed pad mid-card); every edge is 1.6 thick (rim 2 mm wide x 1.6 tall, label plateau 1.6); body 0.8. Nothing below Z 0 or above 1.8. Bottom long edge has two open tolerance notches (2.0 and 1.8 wide on the emoji card, 9 deep, at x 62.5 and 69.5), fine to stand on. Stand on the bottom long edge (label up) or the right short edge. Slot pitch suggestion: 3.0 mm (1.8 card + 1.2 clearance), slot width >= 2.2. Through-windows in the body mean a card does not sit perfectly flat against a neighbour, but the rims keep it 1.6 at the edges. 76 fits a Gridfinity 2x1 bin standing lengthwise (inner >= 78 needed)."
+}

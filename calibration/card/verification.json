@@ -1,0 +1,251 @@
+{
+  "slicer": "ElegooSlicer via tools/slice_cc2.py (--no-iron --no-brim --no-arrange --proc print_sequence=by object --proc print_order=as_obj_list)",
+  "filament": "pla",
+  "card_temp_c": 210,
+  "card_flow": 0.98,
+  "tower": true,
+  "models": [
+    {
+      "file": "card.stl",
+      "sha256": "9d0d3b1cebe7def666d5e7859d05b08b14b0f28470d269be05da713d3f8ffa8b"
+    },
+    {
+      "file": "card_tower.stl",
+      "sha256": "9eac110e5da9e496d5b1f90d3cf6a5e086d06dc7d9c7c86a64abac3aa92e68bb"
+    }
+  ],
+  "model_note": "two objects (card.stl, card_tower.stl) sliced together, print_sequence by object, card first",
+  "geometry": {
+    "triangles": 9680,
+    "card_size_mm": [
+      96.0,
+      77.0,
+      7.0
+    ],
+    "plate_size_mm": [
+      204.0,
+      77.0,
+      27.0
+    ],
+    "bed_shift_mm": [
+      26.0,
+      89.5
+    ],
+    "tower_size_mm": [
+      28.0,
+      9.4,
+      27.0
+    ],
+    "card_to_tower_gap_mm": 80.0
+  },
+  "varies": {
+    "flow_pads": [
+      0.95,
+      0.96,
+      0.97,
+      0.98,
+      0.99,
+      1.0,
+      1.01
+    ],
+    "retraction_pairs_mm": [
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2
+    ],
+    "temperature_bands_c_bottom_to_top": [
+      220,
+      215,
+      210,
+      205,
+      200
+    ],
+    "temperature_band_first_z_mm": [
+      7.2,
+      11.2,
+      15.2,
+      19.2,
+      23.2
+    ],
+    "temperature_band_first_layer_of_tower": [
+      36,
+      56,
+      76,
+      96,
+      116
+    ],
+    "temperature_command": "M109 (wait) at each band's first layer, tower object only",
+    "hex_holes_across_flats_mm": [
+      6.0,
+      6.1,
+      6.2,
+      6.4,
+      6.6,
+      6.8
+    ],
+    "tester_across_flats_mm": 6.0
+  },
+  "gcode": "CC2_CalibCard_PLA_T210_F98.gcode",
+  "gcode_sha256": "74c076a68efa570ab408fac8123167c4534d84659092bb82d04e4e63ae7e5c91",
+  "validation": {
+    "extrusion_moves_checked": 23502,
+    "moves_per_temperature": {
+      "210": 18694,
+      "220": 1214,
+      "215": 1157,
+      "205": 1207,
+      "200": 1230
+    },
+    "min_layer_time_s": 8,
+    "print_objects": 2,
+    "sequential": {
+      "card_gcode_lines": [
+        96,
+        35554
+      ],
+      "tower_gcode_lines": [
+        35583,
+        55215
+      ],
+      "card_printed_xy_mm": [
+        [
+          26.21,
+          121.79
+        ],
+        [
+          88.21,
+          164.79
+        ]
+      ],
+      "tower_printed_xy_mm": [
+        [
+          202.21,
+          229.79
+        ],
+        [
+          121.51,
+          130.49
+        ]
+      ],
+      "card_top_z_mm": 7.0,
+      "tower_top_z_mm": 27.0,
+      "gap_card_to_tower_mm": 80.42,
+      "temperature_wait": {
+        "lift_above_band_mm": 2.0,
+        "park_x_mm": 245.0,
+        "park_beyond_tower_mm": 15.0,
+        "checked": "M109 at the park XY, lifted; no E between lift and Z restore; resume XY = pre-lift XY"
+      },
+      "clearance_rule": {
+        "extruder_clearance_radius_mm": 65.0,
+        "margin_mm": 15.42,
+        "extruder_clearance_height_to_rod_mm": 36.0,
+        "extruder_clearance_height_to_lid_mm": 90.0
+      },
+      "slicer_temperature_commands_between_objects": [
+        "M104 S210 ; set nozzle temperature"
+      ]
+    },
+    "temperature_commands": [
+      {
+        "m109_s": 220,
+        "z": 7.2,
+        "global_layer": 71
+      },
+      {
+        "m109_s": 215,
+        "z": 11.2,
+        "global_layer": 91
+      },
+      {
+        "m109_s": 210,
+        "z": 15.2,
+        "global_layer": 111
+      },
+      {
+        "m109_s": 205,
+        "z": 19.2,
+        "global_layer": 131
+      },
+      {
+        "m109_s": 200,
+        "z": 23.2,
+        "global_layer": 151
+      }
+    ],
+    "hex_hole_extrusion_hits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "hex_hole_wall_moves_seen": [
+      611,
+      708,
+      701,
+      679,
+      681,
+      719
+    ],
+    "pad_moves": [
+      416,
+      416,
+      416,
+      416,
+      416,
+      416,
+      416
+    ],
+    "pad_e_ratio": [
+      0.969384,
+      0.979599,
+      0.9898,
+      1.0,
+      1.010199,
+      1.020401,
+      1.030616
+    ],
+    "cell_sequences": [
+      46,
+      69,
+      46,
+      69,
+      46
+    ],
+    "cell_post_to_post_travels": [
+      21,
+      21,
+      23,
+      23,
+      23
+    ],
+    "retractions_outside_cells_left_stock": 1887,
+    "printed_bounds_xy_mm": [
+      [
+        26.21,
+        121.79
+      ],
+      [
+        88.21,
+        164.79
+      ]
+    ],
+    "shift_xy_mm": [
+      0.0,
+      -1.5
+    ],
+    "wall_inset_mm": 0.21,
+    "grams_recomputed_after_rewrite": 6.74,
+    "slicer_statistics_pre_rewrite": [
+      "; total filament used [g] = 7.27",
+      "; total layers count = 170",
+      "; estimated printing time (normal mode) = 46m 29s"
+    ]
+  },
+  "raw_gcode_kept_at": "<tmp>/cc2-card-ystpp6j7",
+  "physical_print_tested": false
+}

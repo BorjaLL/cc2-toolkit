@@ -1,0 +1,131 @@
+{
+  "slicer_version": "1.5.3.5",
+  "model_source": "C:\\Program Files\\ElegooSlicer\\resources\\calib\\temperature_tower\\temperature_tower.drc",
+  "source_model_sha256": "47edfab84d48f3b762cf536fba532a0e4564653d80e20d4f936ddd5c4541796b",
+  "geometry": {
+    "watertight": true,
+    "size_mm": [
+      44.49906921386719,
+      10.000022888183594,
+      89.999755859375
+    ],
+    "volume_mm3": 20517.586449755825,
+    "faces": 27250
+  },
+  "profiles": {
+    "machine": [
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\machine\\fdm_machine_common.json",
+        "sha256": "cb756c2556039eb86ee260e4e067da38f848b47e84467bd117674b56f9887690"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\machine\\fdm_elegoo_3dp_001_common.json",
+        "sha256": "29cf521500be03ab34f15c978367508ff4bdbe7523aae39c55fb09ffc06b42cf"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\machine\\ECC2\\Elegoo Centauri Carbon 2 0.4 nozzle.json",
+        "sha256": "1ff2160186c3512674a87ac6aa07df674bd14cf12aa75f5bae073e2853970fa4"
+      }
+    ],
+    "process": [
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\process\\fdm_process_common.json",
+        "sha256": "d73bb482543dbcde96ecbe21371592ebaf0a66db97f9b97f43af0e35fc6e7bd9"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\process\\fdm_process_elegoo_common.json",
+        "sha256": "0df960d98a7240037ee4355384ad2f5ea41de8b59c2b96a5174e4ffa7c330891"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\process\\fdm_process_elegoo_04020.json",
+        "sha256": "802488f22365e940ce00206b62cdce67bda3c944c843a99f80cd331d9d0f5c6d"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\process\\ECC2\\0.20mm Standard @Elegoo CC2 0.4 nozzle.json",
+        "sha256": "087e569c9999bd2a78bc625a0fdbb42b1efca752108163f7baac990df02d0904"
+      }
+    ],
+    "filament": [
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\filament\\fdm_filament_common.json",
+        "sha256": "c95391c6f42a69ee8c0dcf63dc2cc2d9310c7d6c3add398fd57353cacf423a46"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\filament\\fdm_filament_pla.json",
+        "sha256": "20e1726b3ab688ae94c339d4a5295bfd0ee000d561c4db5989f99b048b18e1ac"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\filament\\BASE\\Elegoo PLA @base.json",
+        "sha256": "1bb720fe029afc2f59605b6b426d111dfed2360d9ad14471cee47e9591f211bd"
+      },
+      {
+        "path": "C:\\Program Files\\ElegooSlicer\\resources\\profiles\\Elegoo\\filament\\ECC2\\Elegoo PLA @ECC2.json",
+        "sha256": "a6b13d75aa099959cd071e3f0eb266d63076a1c35b53ee410964f69250514c80"
+      }
+    ]
+  },
+  "gcode": "CC2_Emoji_PLA_TempTower_230-190C_0.4mm.gcode",
+  "gcode_sha256": "5a72d2f9b4144d1d230c30cd42b501f042bfdc4d15294f915e35ba3634ad08b6",
+  "validation": {
+    "layer_count": 450,
+    "temperature_bands": [
+      {
+        "first_layer_z_mm": 0.2,
+        "nozzle_c": 230
+      },
+      {
+        "first_layer_z_mm": 10.2,
+        "nozzle_c": 225
+      },
+      {
+        "first_layer_z_mm": 20.2,
+        "nozzle_c": 220
+      },
+      {
+        "first_layer_z_mm": 30.2,
+        "nozzle_c": 215
+      },
+      {
+        "first_layer_z_mm": 40.2,
+        "nozzle_c": 210
+      },
+      {
+        "first_layer_z_mm": 50.2,
+        "nozzle_c": 205
+      },
+      {
+        "first_layer_z_mm": 60.2,
+        "nozzle_c": 200
+      },
+      {
+        "first_layer_z_mm": 70.2,
+        "nozzle_c": 195
+      },
+      {
+        "first_layer_z_mm": 80.2,
+        "nozzle_c": 190
+      }
+    ],
+    "printed_bounds_mm": {
+      "X": [
+        105.96,
+        150.706
+      ],
+      "Y": [
+        117.458,
+        135.542
+      ],
+      "Z": [
+        0.2,
+        90.0
+      ]
+    },
+    "canvas_slot": 1,
+    "verified_extrusion_moves": 56588,
+    "statistics": [
+      "; total filament used [g] = 16.84",
+      "; estimated printing time (normal mode) = 55m 4s"
+    ]
+  },
+  "physical_print_tested": false
+}

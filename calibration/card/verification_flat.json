@@ -1,0 +1,131 @@
+{
+  "slicer": "ElegooSlicer via tools/slice_cc2.py (--no-iron --no-brim --no-arrange)",
+  "filament": "pla",
+  "card_temp_c": 210,
+  "card_flow": 0.98,
+  "tower": false,
+  "geometry": {
+    "triangles": 7004,
+    "size_mm": [
+      96.0,
+      77.0,
+      7.0
+    ],
+    "bed_shift_mm": [
+      80.0,
+      89.5
+    ]
+  },
+  "varies": {
+    "flow_pads": [
+      0.95,
+      0.96,
+      0.97,
+      0.98,
+      0.99,
+      1.0,
+      1.01
+    ],
+    "retraction_pairs_mm": [
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2
+    ],
+    "temperature_bands_c_bottom_to_top": [],
+    "temperature_band_first_layer": [],
+    "hex_holes_across_flats_mm": [
+      6.0,
+      6.1,
+      6.2,
+      6.4,
+      6.6,
+      6.8
+    ],
+    "tester_across_flats_mm": 6.0
+  },
+  "stl": "card_flat.stl",
+  "stl_sha256": "130ca7e45d444ac7d93e616a15b70cba40a38ed62718cee8eea3af6f8db8856e",
+  "gcode": "CC2_CalibCardFlat_PLA_T210_F98.gcode",
+  "gcode_sha256": "72ea77600b899c0fa9dd52fb47fdae04597d644cd4905142c6515d3c44be2729",
+  "validation": {
+    "extrusion_moves_checked": 16668,
+    "moves_per_temperature": {
+      "210": 16668
+    },
+    "min_layer_time_s": 8,
+    "hex_hole_extrusion_hits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "hex_hole_wall_moves_seen": [
+      609,
+      708,
+      707,
+      676,
+      695,
+      713
+    ],
+    "pad_moves": [
+      416,
+      416,
+      416,
+      416,
+      416,
+      416,
+      416
+    ],
+    "pad_e_ratio": [
+      0.969384,
+      0.979599,
+      0.9898,
+      1.0,
+      1.010199,
+      1.020401,
+      1.030616
+    ],
+    "cell_sequences": [
+      46,
+      69,
+      46,
+      69,
+      46
+    ],
+    "cell_post_to_post_travels": [
+      21,
+      21,
+      23,
+      23,
+      23
+    ],
+    "retractions_outside_cells_left_stock": 1144,
+    "printed_bounds_xy_mm": [
+      [
+        80.21,
+        175.79
+      ],
+      [
+        88.21,
+        164.79
+      ]
+    ],
+    "shift_xy_mm": [
+      0.0,
+      -1.5
+    ],
+    "wall_inset_mm": 0.21,
+    "grams_recomputed_after_rewrite": 4.67,
+    "slicer_statistics_pre_rewrite": [
+      "; total filament used [g] = 5.20",
+      "; total layers count = 35",
+      "; estimated printing time (normal mode) = 27m 4s"
+    ]
+  },
+  "raw_gcode_kept_at": "<tmp>/cc2-card-uqns7yos",
+  "physical_print_tested": false
+}
