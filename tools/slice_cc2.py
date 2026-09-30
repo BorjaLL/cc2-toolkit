@@ -20,7 +20,7 @@ read them; pass them explicitly). Example, emoji PLA:
 
 Defaults: PLA PRO filament, 0.20mm layer, stock accel. NOTE: --accel stock only
 leaves ACCELERATION at the Elegoo profile value. The author's quality overrides
-(QUALITY below: cubic infill, monotonic top, top ironing, 5 top layers, Textured
+(QUALITY below: cubic infill, monotonic top, 5 top layers, Textured
 PEI, solid_infill_direction=0, auto_brim) and the 55 C PLA-family bed are ALWAYS
 applied. Pass --pure-stock to skip all of them (process, filament, bed temp) and
 slice with the flattened stock Elegoo profiles only. What remains with
@@ -65,15 +65,13 @@ ACCEL = {
     # input-shaper estimate on that bench. See examples/ for the measurements.
     "capped":     {"default_acceleration": "5000", "outer_wall_acceleration": "3000",
                    "initial_layer_travel_acceleration": "5000"},
-    # overnight / bedroom prints: antiwobble accel plus half-speed travel, and only the
-    # very top surface ironed. The screen's silent mode is only M220 S50 (speed, not
-    # accel), so a large part with many short walls and 500 mm/s hops still clattered
-    # (battery crate, 2026-09-30); whole-floor ironing was 13,700 moves / 3.5 h.
+    # overnight / bedroom prints: antiwobble accel plus half-speed travel. The screen's
+    # silent mode is only M220 S50 (speed, not accel), so a large part with many short
+    # walls and 500 mm/s hops still clattered (battery crate, 2026-09-30).
     "night":      {"default_acceleration": "3000", "outer_wall_acceleration": "2000",
                    "inner_wall_acceleration": "3000", "top_surface_acceleration": "1500",
                    "travel_acceleration": "3000", "initial_layer_travel_acceleration": "3000",
-                   "outer_wall_speed": "120", "travel_speed": "250",
-                   "ironing_type": "topmost"},
+                   "outer_wall_speed": "120", "travel_speed": "250"},
     # solid bench: fast, lean on the CC2's input shaping for ringing.
     "balanced":   {"default_acceleration": "8000", "outer_wall_acceleration": "5000",
                    "outer_wall_speed": "150"},
@@ -85,7 +83,8 @@ QUALITY = {
     "sparse_infill_pattern": "cubic",     # stock rectilinear -> quieter/faster, ~same strength
     "solid_infill_direction": "0",        # solid lines along X (the author's stiff axis); untested on a print (gcode proxy only)
     "top_surface_pattern":   "monotonic", # cleanest top finish
-    "ironing_type":          "top",       # iron top surfaces
+    # ironing ON/OFF is the designer's call (3MF ironing_type, else --iron); these
+    # only tune it when it is on
     "ironing_flow":          "15%",
     "ironing_speed":         "15",
     "top_shell_layers":      "5",         # avoid pillowing/pinholes on tops
@@ -209,6 +208,22 @@ def _mat(s):
 def _apply(p, T):
     (r, t) = T
     return [p[0]*r[0][j] + p[1]*r[1][j] + p[2]*r[2][j] + t[j] for j in range(3)]
+
+def designer_setting(path, key):
+    """Value of a process key in a 3MF's Metadata/project_settings.config, else None.
+    Bambu writes display names ("no ironing"); the CLI wants no_ironing."""
+    if not path or not path.lower().endswith(".3mf"):
+        return None
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as z:
+            v = json.loads(z.read("Metadata/project_settings.config")).get(key)
+    except (KeyError, ValueError, OSError, zipfile.BadZipFile):
+        return None
+    if isinstance(v, list):
+        v = v[0] if v else None
+    return v.replace(" ", "_") if isinstance(v, str) else None
+
 
 def preflight_3mf(path, proc):
     """Print designer-vs-used settings and warn about tall/thin standing parts.
@@ -335,7 +350,7 @@ def main(argv=None, hooks=None):
     ap.add_argument("--accel", choices=list(ACCEL), default="stock",
                     help="stock (default) only leaves ACCELERATION at the Elegoo profile "
                          "value: the author's quality overrides (cubic infill, monotonic "
-                         "top, top ironing, 5 top layers, solid_infill_direction=0, "
+                         "top, 5 top layers, solid_infill_direction=0, "
                          "Textured PEI, auto_brim) and the 55 C PLA bed are still applied "
                          "unless --pure-stock. capped / antiwobble / night / balanced are the "
                          "author's accel values, see guides/tuning.md")
@@ -398,7 +413,10 @@ def main(argv=None, hooks=None):
                     help="keep M600 pause lines. Default strips them: the CC2 hangs at M600 "
                          "with the nozzle parked on the part (melted a print, 2026-09-24).")
     ap.add_argument("--no-iron", action="store_true",
-                    help="skip top-surface ironing (test coupons: saves time, looks don't matter)")
+                    help="no ironing, even if the designer's 3MF irons (test coupons)")
+    ap.add_argument("--iron", choices=["top", "topmost", "solid"],
+                    help="iron although the model does not ask for it. Default: the "
+                         "designer's 3MF ironing_type; STL input = no ironing")
     ap.add_argument("--send", nargs="?", const="", metavar="NAME",
                     help="upload the G-code to the printer over SSH (send_cc2.py) after "
                          "slicing. Optional NAME for the file on the printer; default is "
@@ -467,8 +485,14 @@ def main(argv=None, hooks=None):
         proc_over.update({"enable_support": "1", "support_type": "normal(auto)",
                           "support_threshold_angle": "25",
                           "support_on_build_plate_only": "1"})
+    # Ironing follows the designer (3MF project ironing_type); STLs carry none -> off.
+    iron = designer_setting(a.model, "ironing_type") or "no_ironing"
+    if a.iron:
+        iron = a.iron
     if a.no_iron:
-        proc_over["ironing_type"] = "no_ironing"
+        iron = "no_ironing"
+    if not a.pure_stock or a.iron or a.no_iron:
+        proc_over["ironing_type"] = iron
     for spec in a.proc:                       # applied last: user overrides win
         k, sep, v = spec.partition("=")
         if not sep:
@@ -509,7 +533,7 @@ def main(argv=None, hooks=None):
     print("flat_machine :", len(m_merged), "keys")
     print("flat_process :", len(p_merged), "keys",
           "(pure stock Elegoo)" if a.pure_stock else
-          f"(infill=cubic, ironing, accel={a.accel})")
+          f"(infill=cubic, ironing={proc_over.get('ironing_type', 'profile')}, accel={a.accel})")
     print("flat_filament:", len(f_merged), "keys",
           f"(temp {f_merged.get('nozzle_temperature')} "
           f"flow {f_merged.get('filament_flow_ratio')} "

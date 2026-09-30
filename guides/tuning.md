@@ -51,12 +51,13 @@ The real PLA cooling story: **main part-cooling fan ~100%**, chamber kept under
      accel. An aggressive 3000/2000 "antiwobble" set works but is overkill for
      quality and costs speed on infill/travel - use it only if you can't fix the desk.
    - Overnight next to a bedroom: `--accel night` (antiwobble accel, 250 mm/s
-     travel, ironing on the topmost surface only). The screen's silent mode is
+     travel). The screen's silent mode is
      only `M220 S50`: it halves speed but keeps acceleration, so hops still clatter.
    - What number to pick is a measurement, not a copy-paste:
      `find-your-numbers.md`. One worked example with dates and firmware:
      `../examples/borja-floor-slab/`.
-4. **Top-surface quality levers (bigger wins than flow):** ironing (topmost
+4. **Top-surface quality levers (bigger wins than flow):** ironing (`slice_cc2.py`
+   follows the designer's 3MF `ironing_type`, STL = off, `--iron` to force; topmost
    surface only, flow ~10-18%, ~15 mm/s) + **Monotonic** top pattern; top shell
    >= 4-5 layers / ~0.8-1.0 mm; "slow down for top surface". [confirmed, generic]
 5. **Infill: stock is `rectilinear`, not gyroid. [corrected]** Switching to
