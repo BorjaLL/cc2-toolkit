@@ -11,7 +11,7 @@ applies the tuning overrides, and calls the slicer.
 Usage:
     python slice_cc2.py <input.3mf|stl> [--out DIR] [--name NAME]
                         [--filament pla|plaplus|plapro]
-                        [--layer 0.20|0.12] [--accel capped|antiwobble|balanced|stock]
+                        [--layer 0.20|0.12] [--accel capped|antiwobble|night|balanced|stock]
                         [--temp C] [--flow RATIO] [--bed C] [--pure-stock]
 
 Calibrated values live in filaments/<slug>.md frontmatter (this script does not
@@ -65,6 +65,15 @@ ACCEL = {
     # input-shaper estimate on that bench. See examples/ for the measurements.
     "capped":     {"default_acceleration": "5000", "outer_wall_acceleration": "3000",
                    "initial_layer_travel_acceleration": "5000"},
+    # overnight / bedroom prints: antiwobble accel plus half-speed travel, and only the
+    # very top surface ironed. The screen's silent mode is only M220 S50 (speed, not
+    # accel), so a large part with many short walls and 500 mm/s hops still clattered
+    # (battery crate, 2026-09-30); whole-floor ironing was 13,700 moves / 3.5 h.
+    "night":      {"default_acceleration": "3000", "outer_wall_acceleration": "2000",
+                   "inner_wall_acceleration": "3000", "top_surface_acceleration": "1500",
+                   "travel_acceleration": "3000", "initial_layer_travel_acceleration": "3000",
+                   "outer_wall_speed": "120", "travel_speed": "250",
+                   "ironing_type": "topmost"},
     # solid bench: fast, lean on the CC2's input shaping for ringing.
     "balanced":   {"default_acceleration": "8000", "outer_wall_acceleration": "5000",
                    "outer_wall_speed": "150"},
@@ -328,7 +337,7 @@ def main(argv=None, hooks=None):
                          "value: the author's quality overrides (cubic infill, monotonic "
                          "top, top ironing, 5 top layers, solid_infill_direction=0, "
                          "Textured PEI, auto_brim) and the 55 C PLA bed are still applied "
-                         "unless --pure-stock. capped / antiwobble / balanced are the "
+                         "unless --pure-stock. capped / antiwobble / night / balanced are the "
                          "author's accel values, see guides/tuning.md")
     ap.add_argument("--pure-stock", action="store_true",
                     help="skip ALL the author's overrides (quality set, accel, 55 C PLA "

@@ -50,6 +50,9 @@ The real PLA cooling story: **main part-cooling fan ~100%**, chamber kept under
    - On a wobbly desk: **mass-load it** (paver + mat) first; that beats crippling
      accel. An aggressive 3000/2000 "antiwobble" set works but is overkill for
      quality and costs speed on infill/travel - use it only if you can't fix the desk.
+   - Overnight next to a bedroom: `--accel night` (antiwobble accel, 250 mm/s
+     travel, ironing on the topmost surface only). The screen's silent mode is
+     only `M220 S50`: it halves speed but keeps acceleration, so hops still clatter.
    - What number to pick is a measurement, not a copy-paste:
      `find-your-numbers.md`. One worked example with dates and firmware:
      `../examples/borja-floor-slab/`.
