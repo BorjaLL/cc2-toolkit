@@ -11,7 +11,7 @@ applies the tuning overrides, and calls the slicer.
 Usage:
     python slice_cc2.py <input.3mf|stl> [--out DIR] [--name NAME]
                         [--filament pla|plaplus|plapro]
-                        [--layer 0.20|0.12] [--accel capped|antiwobble|night|balanced|stock]
+                        [--layer 0.20|0.12] [--accel capped|antiwobble|night|night2|balanced|stock]
                         [--temp C] [--flow RATIO] [--bed C] [--pure-stock]
 
 Calibrated values live in filaments/<slug>.md frontmatter (this script does not
@@ -72,6 +72,19 @@ ACCEL = {
                    "inner_wall_acceleration": "3000", "top_surface_acceleration": "1500",
                    "travel_acceleration": "3000", "initial_layer_travel_acceleration": "3000",
                    "outer_wall_speed": "120", "travel_speed": "250"},
+    # quieter still (2026-09-30, Fable planner model + phone logs): printer shake tracks
+    # ACCEL (force = moving mass x accel), speed only shortens the pulse, so accel and
+    # travel accel go down hardest; hops are ~2 mm and never reach travel speed.
+    # SQUARE_CORNER_VELOCITY left alone (lower modelled slightly worse). ~+14% time vs night.
+    "night2":     {"default_acceleration": "2000", "outer_wall_acceleration": "1500",
+                   "inner_wall_acceleration": "2000", "sparse_infill_acceleration": "2000",
+                   "internal_solid_infill_acceleration": "2000", "top_surface_acceleration": "1000",
+                   "travel_acceleration": "1500", "initial_layer_travel_acceleration": "1500",
+                   "initial_layer_acceleration": "500",
+                   "travel_speed": "150", "outer_wall_speed": "100", "inner_wall_speed": "120",
+                   "sparse_infill_speed": "120", "internal_solid_infill_speed": "120",
+                   "top_surface_speed": "100", "gap_infill_speed": "80",
+                   "support_speed": "100", "support_interface_speed": "60"},
     # solid bench: fast, lean on the CC2's input shaping for ringing.
     "balanced":   {"default_acceleration": "8000", "outer_wall_acceleration": "5000",
                    "outer_wall_speed": "150"},
@@ -356,7 +369,7 @@ def main(argv=None, hooks=None):
                          "value: the author's quality overrides (cubic infill, monotonic "
                          "top, 5 top layers, solid_infill_direction=0, "
                          "Textured PEI, auto_brim) and the 55 C PLA bed are still applied "
-                         "unless --pure-stock. capped / antiwobble / night / balanced are the "
+                         "unless --pure-stock. capped / antiwobble / night / night2 / balanced are the "
                          "author's accel values, see guides/tuning.md")
     ap.add_argument("--pure-stock", action="store_true",
                     help="skip ALL the author's overrides (quality set, accel, 55 C PLA "
