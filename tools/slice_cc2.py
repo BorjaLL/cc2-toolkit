@@ -10,7 +10,7 @@ applies the tuning overrides, and calls the slicer.
 
 Usage:
     python slice_cc2.py <input.3mf|stl> [--out DIR] [--name NAME]
-                        [--filament pla|plaplus|plapro]
+                        [--filament pla|plaplus|plapro|plamatte|petghf|asa|abs]
                         [--layer 0.20|0.12] [--accel capped|antiwobble|night|night2|balanced|stock]
                         [--temp C] [--flow RATIO] [--bed C] [--pure-stock]
 
@@ -48,6 +48,9 @@ FILAMENT = {
     "pla":    os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA @ECC2.json"),
     "plaplus": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA+ @ECC2.json"),
     "plapro": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA PRO @ECC2.json"),
+    "plamatte": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA Matte @ECC2.json"),
+    # stock Elegoo PETG HF (high flow; 240 C nozzle, flow 0.99, fan max 50%). NOT tuned or validated here.
+    "petghf": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PETG HF @ECC2.json"),
     # stock Elegoo ASA / ABS (270 C nozzle, 90 C textured plate). NOT tuned or validated here.
     "asa":    os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo ASA @ECC2.json"),
     "abs":    os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo ABS @ECC2.json"),
@@ -392,7 +395,7 @@ def main(argv=None, hooks=None):
                          "Calibrated values: filaments/<slug>.md.")
     ap.add_argument("--bed", type=int, default=None,
                     help="bed temp C, first layer + throughout. Unset = 55 for the PLA "
-                         "family (pla/plaplus/plapro; chamber heat, 2026-09-28) or the "
+                         "family (pla/plaplus/plapro/plamatte; chamber heat, 2026-09-28) or the "
                          "profile stock otherwise. Use --bed 60 for large flat or tall "
                          "thin PLA parts. Sets both textured_plate_temp and "
                          "hot_plate_temp (+ their initial-layer variants).")
@@ -518,7 +521,7 @@ def main(argv=None, hooks=None):
 
     # PLA bed default 55 C (stock 60): enough grip on textured PEI for normal
     # parts, less heat in the closed chamber. --bed 60 for large flat / tall thin.
-    PLA_BED_DEFAULT, PLA_BED_DEFAULT_FILAMENTS = 55, ("pla", "plaplus", "plapro")
+    PLA_BED_DEFAULT, PLA_BED_DEFAULT_FILAMENTS = 55, ("pla", "plaplus", "plapro", "plamatte")
     fil_over = dict(FIL_OVERRIDES)
     if a.auxfan is not None:
         fil_over["additional_cooling_fan_speed"] = [str(a.auxfan)]

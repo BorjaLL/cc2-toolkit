@@ -31,7 +31,7 @@ prints instead.
 |---|---|---|
 | `--out DIR` | `./cc2_out` | G-code (`plate_N.gcode`), flattened profiles and `slice.log` land here |
 | `--name NAME` | none | rename the G-code to `NAME.gcode` in `--out` (`_plateN` added for several plates) |
-| `--filament pla\|plaplus\|plapro\|asa\|abs` | `plapro` | stock Elegoo PLA / PLA+ / PLA PRO / ASA / ABS @ECC2 (ASA/ABS are stock presets, untuned) |
+| `--filament pla\|plaplus\|plapro\|plamatte\|petghf\|asa\|abs` | `plapro` | stock Elegoo PLA / PLA+ / PLA PRO / PLA Matte / PETG HF / ASA / ABS @ECC2 (PETG HF/ASA/ABS are stock presets, untuned) |
 | `--layer 0.20\|0.12` | `0.20` | 0.20 Standard or 0.12 Fine base process |
 | `--accel stock\|capped\|antiwobble\|balanced` | `stock` | acceleration only, see below. `stock` does NOT turn off the quality overrides |
 | `--pure-stock` | off | skip ALL the author's overrides (quality set, accel, 55 C PLA bed) and use the flattened stock Elegoo profiles only, see below |
@@ -62,7 +62,7 @@ Process: `sparse_infill_pattern=cubic`, `top_surface_pattern=monotonic`,
 `top_shell_thickness=0.9`, `curr_bed_type=Textured PEI Plate`,
 `brim_type=auto_brim`, and `solid_infill_direction=0` (untested on a print: it
 comes from a gcode-only estimate, see `guides/tuning.md`). Filament: bed temp 55 C
-(textured and smooth plate, first layer and after) for `pla`/`plaplus`/`plapro`
+(textured and smooth plate, first layer and after) for `pla`/`plaplus`/`plapro`/`plamatte`
 unless you pass `--bed`. Flow and aux fan stay at the profile stock. Anything you disagree with: override it with
 `--proc KEY=VALUE`, which wins over everything baked in.
 
