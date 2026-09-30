@@ -82,6 +82,10 @@ ACCEL = {
 QUALITY = {
     "sparse_infill_pattern": "cubic",     # stock rectilinear -> quieter/faster, ~same strength
     "solid_infill_direction": "0",        # solid lines along X (the author's stiff axis); untested on a print (gcode proxy only)
+    # ...on EVERY layer: without a template the slicer still turns solid infill 90 deg
+    # each layer, so every other layer ran along Y (phone log 2026-09-30: those layers
+    # shook ~2.5x more)
+    "solid_infill_rotate_template": "0",
     "top_surface_pattern":   "monotonic", # cleanest top finish
     # ironing ON/OFF is the designer's call (3MF ironing_type, else --iron); these
     # only tune it when it is on
