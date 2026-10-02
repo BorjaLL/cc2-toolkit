@@ -51,6 +51,16 @@ def _sibling(name):
 
 gcode_util = _sibling("cc2_gcode")
 TOOLKIT_VERSION = gcode_util.TOOLKIT_VERSION
+API_VERSION = gcode_util.API_VERSION
+
+# The public API for wrapper scripts (tools/README.md "Using the tools from your own
+# scripts"). Anything else may change without an API_VERSION bump.
+__all__ = ["TOOLKIT_VERSION", "API_VERSION", "SLICER_DIR", "EXE", "PROFILES", "MACHINE",
+           "PROCESS", "FILAMENT", "ACCEL", "QUALITY", "FIL_OVERRIDES", "VENDOR",
+           "STOCK_PLA_EXPECT", "DESIGNER_KEYS", "TALL_RATIO", "TALL_MIN_H",
+           "EXIT_OK", "EXIT_ERROR", "EXIT_USAGE", "EXIT_REFUSED", "EXIT_SLICER_FAILED",
+           "EXIT_NO_OUTPUT", "RESULT_FILE", "resolve_leaf", "flatten", "verify_stock",
+           "designer_setting", "preflight_3mf", "move_to_name", "send_to_printer", "main"]
 
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
@@ -379,7 +389,8 @@ def main(argv=None, hooks=None):
         add_arguments(ap)        add or change argparse options (e.g. ap.set_defaults)
         parsed(a)                called right after parsing, before any check: may
                                  rewrite options (e.g. map a private filament name to
-                                 --filament/--temp/--flow)
+                                 --filament/--temp/--flow); may set a.result_extra (a
+                                 dict, stored as "wrapper" in slice_result.json)
         prepare(a)               called after the argument checks, before --out is
                                  defaulted and output folders are created
         finish(a, plates, rc)    called after slicing when the slicer exits 0 and wrote
@@ -773,7 +784,7 @@ def new_result(a, log):
                 "filament", "layer", "accel", "pure_stock", "temp", "flow", "bed", "auxfan",
                 "slots", "slot_filament", "plate", "proc", "fil", "keep_pauses")},
             "outputs": [], "stale_in_out": [], "checks": a.checks, "diagnostics": [],
-            "sent": False}
+            "sent": False, "wrapper": getattr(a, "result_extra", None)}
 
 
 def set_outputs(result, plates):

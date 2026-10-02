@@ -55,6 +55,14 @@ def _sibling(name):
 
 
 gcode_util = _sibling("cc2_gcode")
+TOOLKIT_VERSION = gcode_util.TOOLKIT_VERSION
+API_VERSION = gcode_util.API_VERSION
+
+# The public API for wrapper scripts (tools/README.md "Using the tools from your own
+# scripts"). Anything else may change without an API_VERSION bump.
+__all__ = ["TOOLKIT_VERSION", "API_VERSION", "DEST", "NAME_RE", "valid_name", "default_host",
+           "connect", "run", "md5", "m600_count", "check_file", "verify_remote", "send",
+           "upload", "list_files", "pty", "color_table", "start", "main"]
 
 DEST = "/opt/usr/gcode/local"
 # Remote names end up in shell commands and in a gcode line: allow a plain basename only.

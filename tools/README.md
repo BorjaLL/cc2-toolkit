@@ -171,6 +171,10 @@ printer, and a GUI trace helper.
 The tools can be imported and extended instead of copied, so fixes stay in one
 place. Nothing below changes the command-line behaviour.
 
+- The supported API is each module's `__all__` (plus `cc2_gcode.py`). Wrappers
+  should import only those names and check `API_VERSION` (2 since toolkit 1.2.0;
+  it goes up only on an incompatible change to that list, a hook or a signature).
+  `TOOLKIT_VERSION` is reported in `slice_result.json`.
 - `slice_cc2.main(argv=None, hooks=None)`: `hooks` is any object with optional
   `add_arguments(ap)` (add options, change defaults), `parsed(a)` (right after
   parsing, before any check: rewrite options), `prepare(a)` (after the
@@ -179,6 +183,8 @@ place. Nothing below changes the command-line behaviour.
   possibly moved list) and `upload(pairs, force, allow_m600)` (replaces
   `send_cc2.upload` for `--send`). Module values such as `FILAMENT`, `PROCESS`,
   `QUALITY`, `ACCEL`, `resolve_leaf()` and `flatten()` can be used directly.
+- Offline regression tests: `python -m unittest discover -s tests` from the
+  toolkit folder (no slicer, printer or extra packages needed).
 - `send_cc2.send(..., skip_same=True)` skips a file already on the printer with
   the same MD5 instead of refusing; `send()` returns the MD5 when it uploaded.
 - `send_cc2.verify_remote(c, name, allow_m600=False, local=None, checks=())`:
