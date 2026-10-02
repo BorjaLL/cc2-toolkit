@@ -31,8 +31,9 @@ first two items are corrections to advice I found elsewhere.
    the part and melted it; resume after power-off hung again (2026-09-24).
    `tools/slice_cc2.py` **strips `M600` automatically** and prints how many it
    removed; `--keep-pauses` keeps them (with a warning). For G-code sliced
-   elsewhere, check with `grep -c '^M600' file.gcode` before printing.
-   `tools/send_cc2.py` refuses files with `M600`.
+   elsewhere: `tools/send_cc2.py` refuses files with `M600` before upload and
+   before every `--start` (it reads the printer file back). A plain
+   `grep -c '^M600'` misses `M600 ; comment` style lines; the tools do not.
 5. **Designer 3MF settings are replaced, per-object ones are kept.**
    `--load-settings` swaps in the CC2 process, so the 3MF's own process values
    (layer height, infill, ...) are dropped. Keys the tool leaves unset fall back

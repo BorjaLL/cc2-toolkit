@@ -20,7 +20,10 @@ Usage:
     python send_cc2.py <file.gcode> --start      # send, then start printing
     python send_cc2.py --start NAME.gcode        # start a file already on the printer
 
-Refuses files containing M600 (the CC2 hangs on it) unless --allow-m600.
+Refuses files containing M600 (the CC2 hangs on it) unless --allow-m600: before
+upload, and before --start of any file, including one already on the printer (its
+bytes are read back and checked, verify_remote()). M600 with an inline comment,
+parameters or in lower case counts too (cc2_gcode.py, shared with slice_cc2.py).
 Verifies the upload by MD5. Remote names must be plain basenames matching
 [A-Za-z0-9._ -]+.gcode (no slashes, quotes, leading dot or dash).
 
@@ -28,12 +31,30 @@ Remote start is verified ONLY on stock OTA 01.03.02.36 with CANVAS slot 1. It fa
 closed: it refuses if elegoo.log cannot be read or has no print_state line (override
 with --force-start), or if /dev/pts/0 is not a character device.
 """
-import argparse, hashlib, os, posixpath, re, shlex, sys
+import argparse, hashlib, os, posixpath, re, shlex, sys, tempfile
 
 try:
     import paramiko
 except ImportError:  # keep --help working without the dependency
     paramiko = None
+
+
+
+def _sibling(name):
+    """Import tools/<name>.py next to this file as 'cc2toolkit_<name>' (no sys.path change,
+    so a wrapper's own modules with the same name are never shadowed)."""
+    import importlib.util
+    mod = "cc2toolkit_" + name
+    if mod not in sys.modules:
+        spec = importlib.util.spec_from_file_location(
+            mod, os.path.join(os.path.dirname(os.path.abspath(__file__)), name + ".py"))
+        m = importlib.util.module_from_spec(spec)
+        sys.modules[mod] = m
+        spec.loader.exec_module(m)
+    return sys.modules[mod]
+
+
+gcode_util = _sibling("cc2_gcode")
 
 DEST = "/opt/usr/gcode/local"
 # Remote names end up in shell commands and in a gcode line: allow a plain basename only.
@@ -89,8 +110,9 @@ def md5(path):
 
 
 def m600_count(path):
-    with open(path, "r", errors="ignore") as f:
-        return sum(1 for l in f if l.strip() == "M600")
+    """M600 lines in a local G-code, any form (inline comment, parameters, lower case):
+    the same tokenizer slice_cc2 strips with (cc2_gcode.py)."""
+    return gcode_util.m600_count_file(path)
 
 
 def check_file(path, allow_m600):
@@ -100,6 +122,47 @@ def check_file(path, allow_m600):
     if n and not allow_m600:
         sys.exit(f"{path}: {n} M600 line(s) - the CC2 hangs on them. "
                  "Strip them or pass --allow-m600.")
+
+
+def verify_remote(c, name, allow_m600=False, local=None, checks=()):
+    """Check the bytes of printer file NAME right before starting it, whoever sliced it.
+
+    The printer file's md5 is read first. If `local` is a file with that same md5 it is
+    checked instead of downloading; otherwise the printer file is downloaded to a temp
+    file and its md5 must match. Refuses (exits) on M600 unless allow_m600, then runs
+    each `checks` callable as check(label, path_with_the_same_bytes); a check refuses by
+    exiting. Returns the verified md5."""
+    path = posixpath.join(DEST, valid_name(name))
+    remote_md5 = (run(c, f"md5sum {shlex.quote(path)}")[0].split() or [""])[0]
+    if not re.fullmatch(r"[0-9a-f]{32}", remote_md5):
+        sys.exit(f"not on printer: {path}")
+    tmp = None
+    if local and os.path.isfile(local) and md5(local) == remote_md5:
+        src, label = local, f"{name} (= {local}, same md5)"
+    else:
+        fd, tmp = tempfile.mkstemp(prefix="cc2_verify_", suffix=".gcode")
+        os.close(fd)
+        sftp = c.open_sftp()
+        try:
+            sftp.get(path, tmp)
+        finally:
+            sftp.close()
+        if md5(tmp) != remote_md5:
+            os.remove(tmp)
+            sys.exit(f"{name}: the printer file changed while it was read, not starting")
+        src, label = tmp, f"{name} (read from the printer)"
+    try:
+        n = m600_count(src)
+        if n and not allow_m600:
+            sys.exit(f"{label}: {n} M600 line(s) - the CC2 hangs on them. Not starting; "
+                     "re-slice (slice_cc2 strips them) or pass --allow-m600.")
+        for check in checks:
+            check(label, src)
+    finally:
+        if tmp:
+            os.remove(tmp)
+    print(f"verified {name}: md5 {remote_md5}" + (", no M600" if not n else f", {n} M600 allowed"))
+    return remote_md5
 
 
 # ---- send -------------------------------------------------------------------
@@ -290,8 +353,10 @@ def main():
                 send(c, sftp, f, name, a.force, a.allow_m600)
             sftp.close()
         if a.start:
-            name = a.start if a.start is not True else (a.name or os.path.basename(a.files[0]))
-            start(c, gname(name), a.force_start)
+            name = gname(a.start if a.start is not True else (a.name or os.path.basename(a.files[0])))
+            # check the bytes about to print, also for files that were already on the printer
+            verify_remote(c, name, a.allow_m600, local=a.files[0] if a.files else None)
+            start(c, name, a.force_start)
         if a.list:
             list_files(c)
     finally:

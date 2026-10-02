@@ -110,7 +110,9 @@ python tools/slice_cc2.py model.3mf --name lid --send lid     # slice + send
 ```
 
 Files go to `/opt/usr/gcode/local` (the folder USB copies land in), are
-MD5-verified, and files with `M600` are refused. Remote names must be plain
+MD5-verified, and files with `M600` are refused (`M600 ; comment`, `M600 B1` and
+lower case count too: `cc2_gcode.py` is the one tokenizer used for stripping and
+refusing). Remote names must be plain
 basenames matching `[A-Za-z0-9._ -]+.gcode` (no slashes, quotes, leading dot or dash). Start from the touchscreen or
 with `--start`.
 
@@ -128,7 +130,10 @@ slot 1 only. It fails closed: it refuses if the printer's log says it is printin
 or paused, if `elegoo.log` cannot be read or has no `print_state` line (override:
 `--force-start`), or if `/dev/pts/0` is not a character device. It confirms the
 start only when a new `cmd_SDCARD_PRINT_FILE` line for your file appears in the
-log after sending. It cannot see the bed: clear it first.
+log after sending. It cannot see the bed: clear it first. Before every start,
+also of a file already on the printer, it checks the bytes that will print: the
+printer file's md5 is read, a local copy with the same md5 is checked or the file
+is downloaded, and `M600` is refused (`--allow-m600` to override).
 
 ## Not included
 
@@ -150,6 +155,9 @@ place. Nothing below changes the command-line behaviour.
   `QUALITY`, `ACCEL`, `resolve_leaf()` and `flatten()` can be used directly.
 - `send_cc2.send(..., skip_same=True)` skips a file already on the printer with
   the same MD5 instead of refusing; `send()` returns the MD5 when it uploaded.
+- `send_cc2.verify_remote(c, name, allow_m600=False, local=None, checks=())`:
+  checks the printer file's bytes before a start (M600, then each
+  `check(label, path)` callable, which refuses by exiting); returns the md5.
 - `send_cc2.start(c, name, force_start, slot_map=None, level=True)`:
   `slot_map` `{tool: slot 1-4}` maps every tool the G-code uses to a CANVAS
   slot (only slot 1 has been verified); `level=False` skips bed levelling.

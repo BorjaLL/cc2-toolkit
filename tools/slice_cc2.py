@@ -34,6 +34,23 @@ to the install folder if yours is elsewhere.
 """
 import json, os, sys, glob, argparse, subprocess, shutil, re
 
+
+def _sibling(name):
+    """Import tools/<name>.py next to this file as 'cc2toolkit_<name>' (no sys.path change,
+    so a wrapper's own modules with the same name are never shadowed)."""
+    import importlib.util
+    mod = "cc2toolkit_" + name
+    if mod not in sys.modules:
+        spec = importlib.util.spec_from_file_location(
+            mod, os.path.join(os.path.dirname(os.path.abspath(__file__)), name + ".py"))
+        m = importlib.util.module_from_spec(spec)
+        sys.modules[mod] = m
+        spec.loader.exec_module(m)
+    return sys.modules[mod]
+
+
+gcode_util = _sibling("cc2_gcode")
+
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
 PROFILES = os.path.join(SLICER_DIR, "resources", "profiles")
@@ -637,17 +654,16 @@ def main(argv=None, hooks=None):
     for g in gcodes:
         with open(g, encoding="utf-8", newline="") as f:
             lines = f.readlines()
-        hits = [i for i, l in enumerate(lines) if l.strip() == "M600"]
+        hits = gcode_util.m600_lines(lines)  # the same tokenizer send_cc2 refuses with
         if not hits:
             continue
         if a.keep_pauses:
             print(f"WARNING {os.path.basename(g)}: {len(hits)} M600 kept - CC2 hangs on it")
             continue
-        for i in hits:
-            lines[i] = ";M600 removed by slice_cc2 (CC2 hangs on it)\n"
+        n = gcode_util.strip_m600(lines)
         with open(g, "w", encoding="utf-8", newline="") as f:
             f.writelines(lines)
-        print(f"{os.path.basename(g)}: stripped {len(hits)} M600 pause(s)")
+        print(f"{os.path.basename(g)}: stripped {n} M600 pause(s)")
     plates = [(g, os.path.splitext(os.path.basename(g))[0]) for g in sorted(gcodes)]  # (file, "plate_1")
     if a.name and gcodes and rc == 0:
         plates = move_to_name(a, plates, a.out)
