@@ -23,9 +23,30 @@ The slicer is expected in `C:/Program Files/ElegooSlicer`. If yours is
 elsewhere, set `ELEGOO_SLICER_DIR` to the install folder.
 
 Several models are sliced together: auto-arranged, and the slicer opens extra
-plates for what does not fit (one `plate_N.gcode` each). The script's own exit
-code overflows for big slicer codes (-18 becomes -1); read the `exit N` line it
-prints instead.
+plates for what does not fit (one `plate_N.gcode` each).
+
+Each run slices into a fresh `_run-*` folder inside `--out` and only then moves
+its own `plate_N.gcode` files into `--out`, so G-code left there by an earlier run
+is never renamed, finished or sent (it is listed as a `note:` and in
+`stale_in_out`). A failed slice keeps no G-code at all (nothing is post-processed).
+
+Exit codes (stable, small; the slicer's own code is still printed on the
+`exit N | log: ...` line):
+
+| Exit | Status | Meaning |
+|---|---|---|
+| 0 | `ok` | G-code written (and sent with `--send`) |
+| 1 | | bad input, slicer not installed, other error (message on stderr) |
+| 2 | | bad command-line options |
+| 3 | `refused` | a wrapper's policy check refused the G-code (`hooks.finish`) |
+| 4 | `slicer_failed` | the slicer exited non-zero (`slicer_exit`, `diagnostics`) |
+| 5 | `no_output` | the slicer exited 0 but wrote no G-code |
+
+Every run that reaches the slicer writes `<out>/slice_result.json`: `status`,
+`exit_code`, `slicer_exit` (+ `slicer_exit_signed`, e.g. -6), `outputs` (final
+path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
+`diagnostics` (error lines from `slice.log`), `toolkit_version` and the effective
+`settings`. `--json` also prints it as the last stdout line.
 
 | Option | Default | Notes |
 |---|---|---|
@@ -48,6 +69,7 @@ prints instead.
 | `--no-iron` / `--no-brim` / `--no-arrange` | off | skip ironing / brim / auto-arrange |
 | `--keep-pauses` | off | keep `M600` lines (default strips them, the CC2 hangs on them) |
 | `--send [NAME]` | off | upload the result with `send_cc2.py` after slicing |
+| `--json` | off | print the run result (`slice_result.json`) as one JSON line at the end |
 | `--dry-run` | off | write the flattened profiles only |
 | `--verify` | off | self-test: stock Elegoo PLA @ECC2 must resolve to flow 0.98 / aux fan 0 / min fan 50 |
 

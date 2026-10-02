@@ -50,6 +50,7 @@ def _sibling(name):
 
 
 gcode_util = _sibling("cc2_gcode")
+TOOLKIT_VERSION = gcode_util.TOOLKIT_VERSION
 
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
@@ -381,9 +382,12 @@ def main(argv=None, hooks=None):
                                  --filament/--temp/--flow)
         prepare(a)               called after the argument checks, before --out is
                                  defaulted and output folders are created
-        finish(a, plates, rc)    called after slicing when the slicer exits 0 (plates:
-                                 [(gcode path, 'plate_N')], after M600 stripping and the
-                                 --name rename); returns the (possibly moved) plate list
+        finish(a, plates, rc)    called after slicing when the slicer exits 0 and wrote
+                                 G-code (plates: [(gcode path, 'plate_N')] of THIS run
+                                 only, after M600 stripping and the --name rename);
+                                 returns the (possibly moved) plate list. May append
+                                 dicts to a.checks (they land in slice_result.json);
+                                 sys.exit(N) refuses the run (status "refused", exit N)
         upload(pairs, force, allow_m600)
                                  used by --send instead of send_cc2.upload; pairs are
                                  [(local gcode, remote name)]
@@ -477,6 +481,10 @@ def main(argv=None, hooks=None):
                     help="upload the G-code to the printer over SSH (send_cc2.py) after "
                          "slicing. Optional NAME for the file on the printer; default is "
                          "the model name (+ _plateN for multi-plate output).")
+    ap.add_argument("--json", action="store_true",
+                    help="print the run result as one JSON line at the end (it is always written "
+                         "to <out>/slice_result.json): status, exit_code, slicer_exit, outputs "
+                         "with md5, checks, diagnostics, toolkit_version, settings")
     ap.add_argument("--dry-run", action="store_true", help="flatten only, do not slice")
     ap.add_argument("--verify", action="store_true",
                     help="self-test the vendor-scoped resolver against stock Elegoo "
@@ -651,14 +659,45 @@ def main(argv=None, hooks=None):
     # plain STLs and generic 3MFs itself, so --no-arrange did not keep STL positions
     # (calibration/card: two STL objects printed sequentially must stay 80 mm apart).
     cmd += ["--arrange", "0" if a.no_arrange else "1"]
-    cmd += ["--outputdir", a.out, a.model] + a.more
+    # The slicer writes into a fresh per-run folder, so G-code left in --out by an earlier
+    # run can never be mistaken for this run's output (finished, renamed or sent).
+    import tempfile
+    run_dir = tempfile.mkdtemp(prefix="_run-", dir=a.out)
+    cmd += ["--outputdir", run_dir, a.model] + a.more
     log = os.path.join(a.out, "slice.log")
+    result = new_result(a, log)
     print("slicing ->", a.out)
     with open(log, "w", encoding="utf-8") as lf:
         rc = subprocess.call(cmd, stdout=lf, stderr=subprocess.STDOUT)
-    print("exit", rc, "| log:", log)
-    gcodes = glob.glob(os.path.join(a.out, "*.gcode"))
-    print("gcode:", gcodes or "(none - check slice.log)")
+    print("exit", rc, "| log:", log)  # the slicer's own code; tools parse this line
+    result["slicer_exit"] = rc
+    result["slicer_exit_signed"] = rc - (1 << 32) if rc >= (1 << 31) else rc
+    produced = sorted(glob.glob(os.path.join(run_dir, "*.gcode")), key=_plate_key)
+    if rc != 0:
+        shutil.rmtree(run_dir, ignore_errors=True)  # nothing of a failed run is post-processed
+        print("gcode: (none - slicer failed, check slice.log)")
+        result["diagnostics"] = log_diagnostics(log)
+        finish_result(a, result, "slicer_failed", EXIT_SLICER_FAILED)
+    if not produced:
+        shutil.rmtree(run_dir, ignore_errors=True)
+        print("gcode: (none - check slice.log)")
+        result["diagnostics"] = log_diagnostics(log)
+        finish_result(a, result, "no_output", EXIT_NO_OUTPUT)
+    names = {os.path.basename(g) for g in produced}
+    stale = sorted(os.path.basename(g) for g in glob.glob(os.path.join(a.out, "*.gcode"))
+                   if os.path.basename(g) not in names)
+    gcodes = []
+    for g in produced:
+        dst = os.path.join(a.out, os.path.basename(g))
+        os.replace(g, dst)  # same plate_N.gcode name as a previous run: replaced, as before
+        gcodes.append(dst)
+    shutil.rmtree(run_dir, ignore_errors=True)
+    if stale:
+        result["stale_in_out"] = stale
+        print(f"note: {len(stale)} older .gcode file(s) in --out are not from this run and were "
+              f"ignored: {', '.join(stale[:3])}{' ...' if len(stale) > 3 else ''}")
+    print("gcode:", gcodes)
+    stripped = {}
     for g in gcodes:
         with open(g, encoding="utf-8", newline="") as f:
             lines = f.readlines()
@@ -669,17 +708,127 @@ def main(argv=None, hooks=None):
             print(f"WARNING {os.path.basename(g)}: {len(hits)} M600 kept - CC2 hangs on it")
             continue
         n = gcode_util.strip_m600(lines)
+        stripped[os.path.basename(g)] = n
         with open(g, "w", encoding="utf-8", newline="") as f:
             f.writelines(lines)
         print(f"{os.path.basename(g)}: stripped {n} M600 pause(s)")
-    plates = [(g, os.path.splitext(os.path.basename(g))[0]) for g in sorted(gcodes)]  # (file, "plate_1")
-    if a.name and gcodes and rc == 0:
+    plates = [(g, os.path.splitext(os.path.basename(g))[0]) for g in gcodes]  # (file, "plate_1")
+    for g, plate in plates:
+        result["outputs"].append({"plate": plate, "path": g, "m600_stripped": stripped.get(os.path.basename(g), 0)})
+    if a.name:
         plates = move_to_name(a, plates, a.out)
-    if rc == 0 and _hook(hooks, "finish"):
-        plates = hooks.finish(a, plates, rc)
-    if a.send is not None and plates and rc == 0:
-        send_to_printer(a, plates, _hook(hooks, "upload"))
-    sys.exit(rc)
+    if _hook(hooks, "finish"):
+        try:
+            plates = hooks.finish(a, plates, rc)
+        except SystemExit as e:  # a wrapper policy refused the output (e.g. exit 3)
+            set_outputs(result, plates_after_refusal(result))
+            finish_result(a, result, "refused", _exit_code(e), message=_exit_message(e))
+    set_outputs(result, plates)
+    if a.send is not None and plates:
+        try:
+            send_to_printer(a, plates, _hook(hooks, "upload"))
+            result["sent"] = True
+        except SystemExit as e:
+            if _exit_code(e) != 0:
+                finish_result(a, result, "send_failed", _exit_code(e), message=_exit_message(e))
+    finish_result(a, result, "ok", EXIT_OK)
+
+
+# --- results: stable exit codes + slice_result.json ----------------------------
+# The slicer's own code is printed on the 'exit N' line and stored as slicer_exit; the
+# script itself exits with one of these (Windows codes such as 4294967272 used to
+# overflow to -1).
+EXIT_OK = 0
+EXIT_ERROR = 1           # bad input, missing install, unexpected error
+EXIT_USAGE = 2           # argparse errors
+EXIT_REFUSED = 3         # a wrapper's policy check refused the output (hooks.finish)
+EXIT_SLICER_FAILED = 4   # slicer exit code != 0 (see slicer_exit / diagnostics)
+EXIT_NO_OUTPUT = 5       # slicer exit 0 but no G-code written
+RESULT_FILE = "slice_result.json"
+
+
+def _exit_code(e):
+    """Exit code of a SystemExit: None = 0, int as is, a message = 1."""
+    return 0 if e.code is None else e.code if isinstance(e.code, int) else EXIT_ERROR
+
+
+def _exit_message(e):
+    return e.code if isinstance(e.code, str) else None
+
+
+def _plate_key(path):
+    """plate_2 before plate_10."""
+    m = re.search(r"(\d+)", os.path.basename(path))
+    return (int(m.group(1)) if m else 0, os.path.basename(path))
+
+
+def new_result(a, log):
+    """Result record for one run; hooks may append to a.checks (list of dicts)."""
+    if not hasattr(a, "checks"):
+        a.checks = []
+    return {"tool": "cc2-toolkit/slice_cc2", "toolkit_version": TOOLKIT_VERSION,
+            "status": None, "exit_code": None, "slicer_exit": None,
+            "model": [a.model] + a.more, "out": a.out, "log": log,
+            "settings": {k: getattr(a, k, None) for k in (
+                "filament", "layer", "accel", "pure_stock", "temp", "flow", "bed", "auxfan",
+                "slots", "slot_filament", "plate", "proc", "fil", "keep_pauses")},
+            "outputs": [], "stale_in_out": [], "checks": a.checks, "diagnostics": [],
+            "sent": False}
+
+
+def set_outputs(result, plates):
+    """Final output list (after renames / moves by --name or a wrapper), with md5."""
+    import hashlib
+    stripped = {o["plate"]: o.get("m600_stripped", 0) for o in result["outputs"]}
+    outs = []
+    for g, plate in plates:
+        h = hashlib.md5()
+        try:
+            with open(g, "rb") as f:
+                for b in iter(lambda: f.read(1 << 20), b""):
+                    h.update(b)
+            digest = h.hexdigest()
+        except OSError:
+            digest = None
+        outs.append({"plate": plate, "path": os.path.abspath(g), "md5": digest,
+                     "m600_stripped": stripped.get(plate, 0)})
+    result["outputs"] = outs
+
+
+def plates_after_refusal(result):
+    """Outputs still present as G-code after a wrapper refused (it may rename them)."""
+    return [(o["path"], o["plate"]) for o in result["outputs"] if os.path.isfile(o["path"])]
+
+
+def log_diagnostics(log, limit=10):
+    """Last lines of slice.log that look like errors (for the result JSON)."""
+    try:
+        with open(log, encoding="utf-8", errors="replace") as f:
+            lines = [l.strip() for l in f if l.strip()]
+    except OSError:
+        return []
+    hits = [l for l in lines if re.search(r"error|fail|invalid|outside|exceed|range", l, re.I)]
+    return (hits or lines)[-limit:]
+
+
+def finish_result(a, result, status, code, message=None):
+    """Write <out>/slice_result.json (and print it with --json), then exit with code."""
+    result["status"], result["exit_code"] = status, code
+    if message:
+        result["message"] = message
+    path = os.path.join(a.out, RESULT_FILE)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=1)
+    except OSError as e:
+        print(f"could not write {path}: {e}", file=sys.stderr)
+    if getattr(a, "json", False):
+        print(json.dumps(result))
+    else:
+        print(f"result: {status} (exit {code}) -> {path}")
+    if message:
+        print(message, file=sys.stderr)
+    sys.exit(code)
 
 
 def move_to_name(a, plates, dest):

@@ -5,6 +5,11 @@ before upload or start, so the two can never disagree about what counts as M600.
 """
 import re
 
+# Toolkit release, reported in slice_result.json. API_VERSION goes up when a function,
+# hook or module value that wrappers use changes incompatibly (see tools/README.md).
+TOOLKIT_VERSION = "1.2.0"
+API_VERSION = 2
+
 # Optional line number (N123), then the command word. Klipper upper-cases commands,
 # so m600 runs too. M600 must not be followed by a digit or a dot (M6000 is not M600);
 # parameters may follow with or without a space (M600 B1, M600B1).

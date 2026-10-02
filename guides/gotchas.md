@@ -102,8 +102,10 @@ first two items are corrections to advice I found elsewhere.
     (card first, temperature tower alone afterwards, `M109` per band). A
     hand-written 3MF with the BambuStudio `Application` metadata but no project
     settings crashes the CLI (0xC0000005): use STLs or a complete Bambu 3MF.
-11. **The script's exit code overflows** for big slicer codes (-18 becomes -1).
-    Read the `exit N` line it prints instead.
+11. **The slicer's exit codes are huge on Windows** (-6 shows as 4294967290). Since
+    toolkit 1.2.0 `slice_cc2.py` exits with small stable codes (4 = slicer failed,
+    see `tools/README.md`) and stores the slicer's own code in
+    `slice_result.json` (`slicer_exit_signed`); the `exit N` line still shows it.
 
 ## Printer
 
