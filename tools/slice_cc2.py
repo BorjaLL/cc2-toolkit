@@ -376,6 +376,9 @@ def main(argv=None, hooks=None):
     a private repo that files the G-code into its own folders). Any of these
     attributes may be set, all are optional and the default run uses none:
         add_arguments(ap)        add or change argparse options (e.g. ap.set_defaults)
+        parsed(a)                called right after parsing, before any check: may
+                                 rewrite options (e.g. map a private filament name to
+                                 --filament/--temp/--flow)
         prepare(a)               called after the argument checks, before --out is
                                  defaulted and output folders are created
         finish(a, plates, rc)    called after slicing when the slicer exits 0 (plates:
@@ -446,9 +449,12 @@ def main(argv=None, hooks=None):
                          "Required for print-in-place assemblies "
                          "so interlocking parts stay in their designed positions, and for "
                          "several STLs that must keep their spacing (sequential printing).")
-    ap.add_argument("--slots", type=int, default=1,
-                    help="load the filament into N slots. Needed when a 3MF's objects use "
-                         "slots >1 (e.g. NOAMS per-colour plates), else the CLI exits -101.")
+    ap.add_argument("--slots", "--slot-count", dest="slots", type=int, default=1,
+                    help="a COUNT, not a slot number: load the filament into the first N "
+                         "slicer filament slots (logical tools T0..T(N-1)). Needed when a 3MF's "
+                         "objects use slots >1 (e.g. NOAMS per-colour plates), else the CLI exits "
+                         "-101. Which physical CANVAS slot each tool feeds from is chosen at "
+                         "print start (send_cc2 start slot_map), not here.")
     ap.add_argument("--slot-filament", action="append", default=[], metavar="N=KIND[:TEMP[:FLOW]]",
                     help="load a different filament into slot N (repeatable), e.g. "
                          "--slot-filament 4=plaplus:210:0.98 for a 2-colour print with black "
@@ -478,6 +484,8 @@ def main(argv=None, hooks=None):
     if _hook(hooks, "add_arguments"):
         hooks.add_arguments(ap)
     a = ap.parse_args(argv)
+    if _hook(hooks, "parsed"):
+        hooks.parsed(a)
 
     if a.pure_stock and a.accel != "stock":
         ap.error("--pure-stock cannot be combined with --accel " + a.accel)

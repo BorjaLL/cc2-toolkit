@@ -42,7 +42,7 @@ prints instead.
 | `--proc KEY=VALUE` | none | extra process override, applied last (repeatable) |
 | `--fil KEY=VALUE` | none | extra filament override (repeatable) |
 | `--slot-filament N=KIND[:TEMP[:FLOW]]` | none | a different filament in slot N |
-| `--slots N` | `1` | load the filament into N slots (needed when a 3MF uses slots above 1) |
+| `--slots N` (alias `--slot-count N`) | `1` | a count: load the filament into the first N slicer slots, i.e. tools T0..T(N-1) (needed when a 3MF uses slots above 1). The physical CANVAS slot per tool is picked at start (`slot_map`), not here |
 | `--plate N` | `0` (all) | slice one plate of a multi-plate 3MF |
 | `--supports` | off | normal(auto) supports, build plate only, 25 degree threshold |
 | `--no-iron` / `--no-brim` / `--no-arrange` | off | skip ironing / brim / auto-arrange |
@@ -147,7 +147,8 @@ The tools can be imported and extended instead of copied, so fixes stay in one
 place. Nothing below changes the command-line behaviour.
 
 - `slice_cc2.main(argv=None, hooks=None)`: `hooks` is any object with optional
-  `add_arguments(ap)` (add options, change defaults), `prepare(a)` (after the
+  `add_arguments(ap)` (add options, change defaults), `parsed(a)` (right after
+  parsing, before any check: rewrite options), `prepare(a)` (after the
   argument checks, before output folders are made), `finish(a, plates, rc)`
   (after a successful slice; `plates` is `[(gcode, "plate_N")]`, return the
   possibly moved list) and `upload(pairs, force, allow_m600)` (replaces
