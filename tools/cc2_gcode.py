@@ -7,7 +7,7 @@ import re
 
 # Toolkit release, reported in slice_result.json. API_VERSION goes up when a function,
 # hook or module value that wrappers use changes incompatibly (see tools/README.md).
-TOOLKIT_VERSION = "1.2.0"
+TOOLKIT_VERSION = "1.3.0"
 API_VERSION = 2
 
 # Optional line number (N123), then the command word. Klipper upper-cases commands,

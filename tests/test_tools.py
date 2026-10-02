@@ -261,6 +261,85 @@ class TestSliceOutputs(unittest.TestCase):
         self.assertEqual(read(self.old), "M600\n")
 
 
+def tower(r=10.0, h=10.0, cap=2.0, n=24):
+    """Closed mesh: vertical cylinder of height h with a shallow cone cap (triangles)."""
+    import math
+    ring = [(r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+    tris = []
+    for i in range(n):
+        (x0, y0), (x1, y1) = ring[i], ring[(i + 1) % n]
+        a, b, c, d = (x0, y0, 0.0), (x1, y1, 0.0), (x1, y1, h), (x0, y0, h)
+        tris += [(a, b, c), (a, c, d), ((0.0, 0.0, 0.0), b, a), (d, c, (0.0, 0.0, h + cap))]
+    return tris
+
+
+def ascii_stl(tris):
+    body = "".join("facet normal 0 0 0\nouter loop\n" + "".join(f"vertex {x} {y} {z}\n" for x, y, z in t)
+                   + "endloop\nendfacet\n" for t in tris)
+    return ("solid t\n" + body + "endsolid t\n").encode()
+
+
+class TestAdaptive(unittest.TestCase):
+    al = load("adaptive_layers")
+
+    def test_profile_walls_thick_cap_thin(self):
+        p = self.al.profile(tower(), quality=0.5, layer=0.2, lo=0.08, hi=0.28, first=0.2)
+        self.assertEqual(len(p) % 2, 0)
+        self.assertAlmostEqual(p[-2], 12.0, places=4)   # last z = object height, else the slicer drops it
+        self.assertEqual(p[:4], [0.0, 0.2, 0.2, 0.2])   # first layer kept
+        hs = dict(zip(p[0::2], p[1::2]))
+        walls = [h for z, h in hs.items() if 3 < z < 9]
+        cap = [h for z, h in hs.items() if 10.8 < z < 11.8]  # after the 0.04 mm/layer ramp
+        self.assertTrue(walls and min(walls) > 0.27)    # vertical walls: max height
+        self.assertTrue(cap and max(cap) < 0.15)        # shallow cone: thinner than base
+        for h0, h1 in zip(p[3:-2:2], p[5:-2:2]):        # 0.04 mm max step (the last top-up entry may jump)
+            self.assertLessEqual(abs(h1 - h0), 0.04 + 1e-9)
+        finer = self.al.profile(tower(), quality=0.1, layer=0.2, lo=0.08, hi=0.28, first=0.2)
+        self.assertGreater(self.al.layer_stats(finer)[0], self.al.layer_stats(p)[0])
+        smooth = self.al.profile(tower(), quality=0.5, smooth=5)
+        self.assertAlmostEqual(smooth[-2], 12.0, places=4)
+        self.assertTrue(all(0.08 <= h <= 0.28 for h in smooth[1::2]))
+
+    def test_stl_to_adaptive_3mf(self):
+        import zipfile
+        d = tempfile.mkdtemp()
+        try:
+            src, dst = os.path.join(d, "t.stl"), os.path.join(d, "t.3mf")
+            write(src, ascii_stl(tower()))
+            info = self.al.write_adaptive_3mf(src, dst, 0.5)
+            self.assertEqual([(o["object"], o["name"], o["height"]) for o in info], [(1, "t", 12.0)])
+            with zipfile.ZipFile(dst) as z:
+                txt = z.read(self.al.PROFILE_FILE).decode()
+            self.assertTrue(txt.startswith("object_id=1|0.000000;0.200000;"))
+            objs = self.al.read_3mf_objects(dst)             # mesh survives the round trip
+            self.assertEqual(len(objs[0][2]), len(tower()))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_slice_main_passes_adaptive_copy(self):
+        d = tempfile.mkdtemp()
+        try:
+            out, model = os.path.join(d, "out"), os.path.join(d, "tower.stl")
+            write(model, ascii_stl(tower()))
+            with FakeSlicer(d) as fs:
+                code = run_main([model, "--out", out, "--adaptive", "--adaptive-smooth", "3"])
+            self.assertEqual(code, sc.EXIT_OK)
+            used = fs.calls[0][-1]
+            self.assertTrue(os.path.basename(used).startswith("adaptive_1_tower") and used.endswith(".3mf"))
+            self.assertTrue(os.path.isfile(used))
+            with open(os.path.join(out, sc.RESULT_FILE), encoding="utf-8") as f:
+                r = json.load(f)
+            self.assertEqual((r["settings"]["adaptive"], r["settings"]["adaptive_smooth"]), (0.5, 3))
+            self.assertEqual(r["adaptive"][0]["height"], 12.0)
+            with FakeSlicer(d + "/plain") as fs:  # off by default: the model goes in unchanged
+                run_main([model, "--out", out])
+            self.assertEqual(fs.calls[0][-1], model)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(run_main([model, "--out", out, "--adaptive", "1.5"]), 2)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 class TestApi(unittest.TestCase):
     def test_all_names_exist(self):
         for m in (sc, snd):

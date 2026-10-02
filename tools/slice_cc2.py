@@ -13,6 +13,7 @@ Usage:
                         [--filament pla|plaplus|plapro|plamatte|petghf|asa|abs]
                         [--layer 0.20|0.12] [--accel capped|antiwobble|night|night2|night3|balanced|stock]
                         [--temp C] [--flow RATIO] [--bed C] [--pure-stock]
+                        [--adaptive [QUALITY]] [--adaptive-smooth RADIUS]
 
 Calibrated values live in filaments/<slug>.md frontmatter (this script does not
 read them; pass them explicitly). Example, emoji PLA:
@@ -60,7 +61,8 @@ __all__ = ["TOOLKIT_VERSION", "API_VERSION", "SLICER_DIR", "EXE", "PROFILES", "M
            "STOCK_PLA_EXPECT", "DESIGNER_KEYS", "TALL_RATIO", "TALL_MIN_H",
            "EXIT_OK", "EXIT_ERROR", "EXIT_USAGE", "EXIT_REFUSED", "EXIT_SLICER_FAILED",
            "EXIT_NO_OUTPUT", "RESULT_FILE", "resolve_leaf", "flatten", "verify_stock",
-           "designer_setting", "preflight_3mf", "move_to_name", "send_to_printer", "main"]
+           "designer_setting", "preflight_3mf", "adaptive_models", "move_to_name",
+           "send_to_printer", "main"]
 
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
@@ -376,6 +378,42 @@ def preflight_3mf(path, proc):
                   "--proc ironing_type=topmost (or no_ironing), a second copy or "
                   "its own plate (guides/gotchas.md item 6).")
 
+# --- adaptive layer height ----------------------------------------------------
+# The CLI drops adaptive_layer_height (legacy key, not even in the G-code config dump;
+# checked 2026-10-02 on ElegooSlicer 1.5.3: same 207 layers with and without it) but
+# honours a 3MF's per-object Metadata/layer_heights_profile.txt. adaptive_layers.py
+# computes that profile the way the GUI Adaptive / Smooth buttons do.
+def _num(v):
+    return float(v[0] if isinstance(v, list) else v)
+
+
+def adaptive_models(models, work, machine, process, quality, smooth=0):
+    """Copy each model to work/adaptive_N_<stem>.3mf with an adaptive layer height
+    profile. Base, first layer and min/max heights come from the flattened process
+    (layer_height, initial_layer_print_height) and machine (min/max_layer_height).
+    Returns (new model paths, [per-object info dicts])."""
+    al = _sibling("adaptive_layers")
+    base = _num(process.get("layer_height", "0.2"))
+    first = _num(process.get("initial_layer_print_height", base))
+    lo = _num(machine.get("min_layer_height", "0.08"))
+    hi = _num(machine.get("max_layer_height", "0.28"))
+    out, info = [], []
+    for n, m in enumerate(models, 1):
+        stem = re.sub(r"[^A-Za-z0-9._+-]+", "_", os.path.splitext(os.path.basename(m))[0])
+        dst = os.path.join(work, f"adaptive_{n}_{stem}.3mf")
+        try:
+            objs = al.write_adaptive_3mf(m, dst, quality, base, lo, hi, first, smooth)
+        except (ValueError, KeyError, OSError) as e:
+            sys.exit(f"--adaptive: cannot read {m}: {e}")
+        for o in objs:
+            o["model"] = m
+            print(f"adaptive q={quality} smooth={smooth}: '{o['name']}' {o['height']} mm, "
+                  f"~{o['layers']} layers, {o['min']}-{o['max']} mm (base {base}, limits {lo}-{hi})")
+        out.append(dst)
+        info += objs
+    return out, info
+
+
 def _hook(hooks, name):
     return getattr(hooks, name, None) if hooks is not None else None
 
@@ -488,6 +526,17 @@ def main(argv=None, hooks=None):
     ap.add_argument("--iron", choices=["top", "topmost", "solid"],
                     help="iron although the model does not ask for it. Default: the "
                          "designer's 3MF ironing_type; STL input = no ironing")
+    ap.add_argument("--adaptive", nargs="?", type=float, const=0.5, default=None, metavar="QUALITY",
+                    help="adaptive (variable) layer height: thin layers on flat-ish curved tops, "
+                         "thick on steep walls, between the machine min/max layer height around "
+                         "the --layer base. QUALITY 0 = finest .. 0.5 (default, as the GUI) = base "
+                         "layer .. 1 = fastest. The CLI ignores adaptive_layer_height, so the "
+                         "profile is computed here and written into a copy of the model "
+                         "(3MF Metadata/layer_heights_profile.txt; an STL is wrapped in a 3MF). "
+                         "Replaces any variable layer profile the 3MF already has")
+    ap.add_argument("--adaptive-smooth", type=int, default=0, metavar="RADIUS",
+                    help="with --adaptive: smooth the profile like the GUI Smooth button "
+                         "(radius in layers, GUI default 5); 0 = off (default)")
     ap.add_argument("--send", nargs="?", const="", metavar="NAME",
                     help="upload the G-code to the printer over SSH (send_cc2.py) after "
                          "slicing. Optional NAME for the file on the printer; default is "
@@ -536,6 +585,10 @@ def main(argv=None, hooks=None):
         if not 1 <= int(n) <= 4:
             sys.exit(f"--slot-filament {spec!r}: slot must be 1..4 (the CANVAS has 4 slots)")
         slot_specs.append((int(n), rest.split(":")))
+    if a.adaptive is not None and not 0 <= a.adaptive <= 1:
+        ap.error(f"--adaptive {a.adaptive}: QUALITY must be 0..1")
+    if a.adaptive_smooth < 0:
+        ap.error("--adaptive-smooth must be >= 0")
     if not 1 <= a.slots <= 4:
         sys.exit(f"--slots {a.slots}: must be 1..4 (the CANVAS has 4 slots)")
     if _hook(hooks, "prepare"):
@@ -674,9 +727,16 @@ def main(argv=None, hooks=None):
     # run can never be mistaken for this run's output (finished, renamed or sent).
     import tempfile
     run_dir = tempfile.mkdtemp(prefix="_run-", dir=a.out)
-    cmd += ["--outputdir", run_dir, a.model] + a.more
+    models = [a.model] + a.more
+    adaptive = None
+    if a.adaptive is not None:
+        models, adaptive = adaptive_models(models, work, m_merged, p_merged, a.adaptive,
+                                           a.adaptive_smooth)
+    cmd += ["--outputdir", run_dir] + models
     log = os.path.join(a.out, "slice.log")
     result = new_result(a, log)
+    if adaptive is not None:
+        result["adaptive"] = adaptive
     print("slicing ->", a.out)
     with open(log, "w", encoding="utf-8") as lf:
         rc = subprocess.call(cmd, stdout=lf, stderr=subprocess.STDOUT)
@@ -782,7 +842,8 @@ def new_result(a, log):
             "model": [a.model] + a.more, "out": a.out, "log": log,
             "settings": {k: getattr(a, k, None) for k in (
                 "filament", "layer", "accel", "pure_stock", "temp", "flow", "bed", "auxfan",
-                "slots", "slot_filament", "plate", "proc", "fil", "keep_pauses")},
+                "slots", "slot_filament", "plate", "proc", "fil", "keep_pauses", "adaptive",
+                "adaptive_smooth")},
             "outputs": [], "stale_in_out": [], "checks": a.checks, "diagnostics": [],
             "sent": False, "wrapper": getattr(a, "result_extra", None)}
 

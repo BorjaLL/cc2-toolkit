@@ -8,6 +8,7 @@ Windows with ElegooSlicer 1.5.3.x and stock CC2 firmware OTA 01.03.02.36.
 | `slice_cc2.py` | Flattens the stock ElegooSlicer CC2 profiles, applies a few overrides, slices with the slicer CLI |
 | `send_cc2.py` | Uploads G-code to the printer over SFTP, lists / deletes files, starts a print remotely |
 | `mf2stl.py` | 3MF (production extension) to binary STL: `python mf2stl.py in.3mf out.stl [build_objectid]` |
+| `adaptive_layers.py` | adaptive layer height profile into a copy of a 3MF/STL (used by `slice_cc2.py --adaptive`; also standalone: `python adaptive_layers.py in.3mf out.3mf --quality 0.5`) |
 
 `slice_cc2.py` exists because the slicer CLI cannot resolve `inherits:` chains
 from `--load-settings` files, so the profiles must be flattened first. The GUI
@@ -67,6 +68,8 @@ path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
 | `--plate N` | `0` (all) | slice one plate of a multi-plate 3MF |
 | `--supports` | off | normal(auto) supports, build plate only, 25 degree threshold |
 | `--no-iron` / `--no-brim` / `--no-arrange` | off | skip ironing / brim / auto-arrange |
+| `--adaptive [QUALITY]` | off (`0.5` when given alone) | adaptive layer height, see below. QUALITY 0 = finest .. 0.5 = base layer .. 1 = fastest |
+| `--adaptive-smooth RADIUS` | `0` (off) | with `--adaptive`: smooth the profile like the GUI Smooth button (radius in layers; GUI default 5) |
 | `--keep-pauses` | off | keep `M600` lines (default strips them, the CC2 hangs on them) |
 | `--send [NAME]` | off | upload the result with `send_cc2.py` after slicing |
 | `--json` | off | print the run result (`slice_result.json`) as one JSON line at the end |
@@ -96,6 +99,28 @@ profiles. What remains: `curr_bed_type=Textured PEI Plate` and `brim_type` (CLI
 fixes: without them the CLI uses Cool Plate 35 C or leaks a designer's `no_brim`),
 `M600` stripping, and whatever you pass explicitly (`--temp`, `--bed`, `--proc`,
 `--fil`, `--no-iron` ...). It cannot be combined with `--accel capped|antiwobble|balanced`.
+
+### `--adaptive` (variable layer height)
+
+The slicer CLI ignores `adaptive_layer_height=1`: it is a legacy key that
+ElegooSlicer/OrcaSlicer drops on load (the G-code config dump does not list it,
+and the layer count does not change). What the CLI does honour is a 3MF's
+per-object variable layer profile, `Metadata/layer_heights_profile.txt`, which
+the GUI writes when you press Adaptive in the variable layer height dialog.
+
+`--adaptive` computes that profile with a port of Orca's own algorithm
+(`adaptive_layers.py`: layer height from each facet's slope, the Quality/Speed
+factor, the 0.04 mm per-layer change limit, optional Gaussian smoothing) and
+slices a copy of the model (`<out>/_profiles/adaptive_N_<model>.3mf`; an STL is
+wrapped in a minimal 3MF first). The base is the process `layer_height` (`--layer`
+or `--proc layer_height=...`), the limits are the machine `min_layer_height` /
+`max_layer_height` (0.08 / 0.28 on the CC2 0.4 nozzle). A variable layer profile
+the 3MF already has is replaced. Per-object results (height, estimated layers,
+min/max) are printed and stored as `adaptive` in `slice_result.json`.
+
+Example (a 41 mm ghost figure, 2026-10-02): fixed 0.20 = 207 layers / 52 min,
+fixed 0.12 = 344 layers / 1h41, `--adaptive 0.37 --adaptive-smooth 10` = 236 layers
+(0.11-0.26 mm) / 58 min, with the thin layers on the rounded head.
 
 ### Accel
 
@@ -173,7 +198,8 @@ place. Nothing below changes the command-line behaviour.
 
 - The supported API is each module's `__all__` (plus `cc2_gcode.py`). Wrappers
   should import only those names and check `API_VERSION` (2 since toolkit 1.2.0;
-  it goes up only on an incompatible change to that list, a hook or a signature).
+  it goes up only on an incompatible change to that list, a hook or a signature;
+  toolkit 1.3.0 added `adaptive_models()` and `adaptive_layers.py`, API still 2).
   `TOOLKIT_VERSION` is reported in `slice_result.json`.
 - `slice_cc2.main(argv=None, hooks=None)`: `hooks` is any object with optional
   `add_arguments(ap)` (add options, change defaults), `parsed(a)` (right after
