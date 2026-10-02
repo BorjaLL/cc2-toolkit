@@ -1,5 +1,8 @@
 # Worked example: CC2 on a floor slab, stock soft feet
 
+Historical (2026-09-29): the author's setup has changed since (rigid feet, then the slab on
+tennis balls); the numbers below describe that day only.
+
 One printer, one setup, one date. Your numbers will differ: use
 `guides/find-your-numbers.md` to get yours. These are here to show what the
 process looks like, not as values to copy.
