@@ -131,6 +131,9 @@ python tools/send_cc2.py --delete lid.gcode
 python tools/slice_cc2.py model.3mf --name lid --send lid     # slice + send
 ```
 
+One action per run: files (optionally with `--start`), `--start NAME`, `--list`
+or `--delete`; other combinations are refused before connecting.
+
 Files go to `/opt/usr/gcode/local` (the folder USB copies land in), are
 MD5-verified, and files with `M600` are refused (`M600 ; comment`, `M600 B1` and
 lower case count too: `cc2_gcode.py` is the one tokenizer used for stripping and

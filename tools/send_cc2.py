@@ -327,6 +327,13 @@ def main():
         ap.error("bare --start needs exactly one file (or --start NAME)")
     if a.name and len(a.files) != 1:
         ap.error("--name needs exactly one file")
+    # one action per run (files + bare --start = send then start); refused before connecting
+    acts = [n for n, on in (("files", bool(a.files)), ("--start NAME", a.start not in (None, True)),
+                            ("--list", a.list), ("--delete", bool(a.delete))) if on]
+    if len(acts) > 1:
+        ap.error("one action per run, got " + " + ".join(acts) + " (only FILE --start combines)")
+    if a.force_start and not a.start:
+        ap.error("--force-start needs --start")
 
     for f in a.files:  # refuse before connecting
         check_file(f, a.allow_m600)
