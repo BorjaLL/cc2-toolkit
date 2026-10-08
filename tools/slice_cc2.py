@@ -60,7 +60,7 @@ __all__ = ["TOOLKIT_VERSION", "API_VERSION", "SLICER_DIR", "EXE", "PROFILES", "M
            "PROCESS", "FILAMENT", "ACCEL", "QUALITY", "FIL_OVERRIDES", "VENDOR",
            "STOCK_PLA_EXPECT", "DESIGNER_KEYS", "TALL_RATIO", "TALL_MIN_H",
            "EXIT_OK", "EXIT_ERROR", "EXIT_USAGE", "EXIT_REFUSED", "EXIT_SLICER_FAILED",
-           "EXIT_NO_OUTPUT", "RESULT_FILE", "resolve_leaf", "flatten", "verify_stock",
+           "EXIT_NO_OUTPUT", "RESULT_FILE", "SLICER_EXIT_HINTS", "slicer_exit_hint", "resolve_leaf", "flatten", "verify_stock",
            "designer_setting", "preflight_3mf", "adaptive_models", "move_to_name",
            "send_to_printer", "main"]
 
@@ -748,6 +748,10 @@ def main(argv=None, hooks=None):
         shutil.rmtree(run_dir, ignore_errors=True)  # nothing of a failed run is post-processed
         print("gcode: (none - slicer failed, check slice.log)")
         result["diagnostics"] = log_diagnostics(log)
+        hint = slicer_exit_hint(result["slicer_exit_signed"], a.no_arrange)
+        if hint:
+            result["slicer_exit_hint"] = hint
+            print(f"slicer exit {result['slicer_exit_signed']}: {hint}")
         finish_result(a, result, "slicer_failed", EXIT_SLICER_FAILED)
     if not produced:
         shutil.rmtree(run_dir, ignore_errors=True)
@@ -815,6 +819,30 @@ EXIT_USAGE = 2           # argparse errors
 EXIT_REFUSED = 3         # a wrapper's policy check refused the output (hooks.finish)
 EXIT_SLICER_FAILED = 4   # slicer exit code != 0 (see slicer_exit / diagnostics)
 EXIT_NO_OUTPUT = 5       # slicer exit 0 but no G-code written
+
+# Slicer exit codes seen on the ElegooSlicer / OrcaSlicer CLI (signed). The CLI log only
+# says "Slic3r::CLI::run found error, exit", so the code is all there is to go on.
+SLICER_EXIT_HINTS = {
+    -17: "profile not accepted (unresolved 'inherits' chain or incompatible process); "
+         "load flattened profiles",
+    -21: "auto-arrange failed: the part does not fit the bed with arrange spacing and the "
+         "bed exclude zone (e.g. a ~255 mm part on a 256 mm bed, or a 3MF laid out for a "
+         "bigger printer). Place the part inside the printable area clear of the exclude "
+         "zone and pass --no-arrange",
+    -24: "3MF from a newer slicer (pass --allow-newer-file)",
+    -50: "object partly outside the printable area or inside the bed exclude zone (after "
+         "auto-arrange too). Place it fully inside, clear of the exclude zone, and pass "
+         "--no-arrange",
+    -100: "slicing error (e.g. a mesh with unmerged vertices)",
+}
+
+
+def slicer_exit_hint(code, no_arrange=False):
+    """One-line meaning of a slicer exit code, or None."""
+    hint = SLICER_EXIT_HINTS.get(code)
+    if hint and no_arrange and code in (-21, -50):
+        hint += " (already --no-arrange: move the part in the model itself)"
+    return hint
 RESULT_FILE = "slice_result.json"
 
 

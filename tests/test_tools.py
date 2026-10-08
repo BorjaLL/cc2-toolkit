@@ -233,6 +233,18 @@ class TestSliceOutputs(unittest.TestCase):
         r = self.result()
         self.assertEqual((r["status"], r["slicer_exit_signed"]), ("slicer_failed", -6))
         self.assertTrue(r["diagnostics"])
+        self.assertNotIn("slicer_exit_hint", r)
+
+    def test_arrange_failure_hint(self):
+        # -21: a 255 mm part on the 256 mm CC2 bed with its exclude zone (2026-10-08)
+        with FakeSlicer(self.d, rc=4294967275), quiet():
+            code = run_main([self.model, "--out", self.out])
+        self.assertEqual(code, sc.EXIT_SLICER_FAILED)
+        r = self.result()
+        self.assertEqual(r["slicer_exit_signed"], -21)
+        self.assertIn("--no-arrange", r["slicer_exit_hint"])
+        self.assertIn("already --no-arrange", sc.slicer_exit_hint(-50, no_arrange=True))
+        self.assertIsNone(sc.slicer_exit_hint(-6))
 
     def test_no_output(self):
         with FakeSlicer(self.d, plates=0):
