@@ -274,7 +274,10 @@ def start(c, name, force_start=False, slot_map=None, level=True):
     level: True (default) runs the G-code's bed levelling (BED_MESH_CALIBRATE, ~5 min);
     False skips it and uses the saved mesh, like the screen's levelling toggle off."""
     valid_name(name)
-    state = run(c, "grep -a 'handle_print_state print_state:' /opt/usr/logs/elegoo.log | tail -1")[0]
+    # elegoo.log rotates to elegoo.1.log at ~10 MB: the last state line may sit in the rotated file
+    state = run(c, "for f in /opt/usr/logs/elegoo.log /opt/usr/logs/elegoo.1.log; do "
+                   "l=$(grep -a 'handle_print_state print_state:' $f | tail -1); "
+                   "[ -n \"$l\" ] && { echo \"$l\"; break; }; done")[0]
     if "print_state:" not in state:
         msg = "cannot read a print_state line from /opt/usr/logs/elegoo.log"
         if not force_start:
