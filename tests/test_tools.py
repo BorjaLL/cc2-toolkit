@@ -456,6 +456,40 @@ class TestThumbnail(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
 
+class TestAccelCap(unittest.TestCase):
+    ca = load("check_accel")
+
+    def test_peak_from_commands_and_settings(self):
+        pk = self.ca.peak_accel
+        self.assertEqual(pk(["G1 X1", "; M204 S99999", "M204 S3000 ; walls"])[0], 3000)
+        self.assertEqual(pk(["M204 P2000 T6000"]), (6000, "M204 T6000 (line 1)"))
+        self.assertEqual(pk(["SET_VELOCITY_LIMIT ACCEL=7000 ACCEL_TO_DECEL=3500"])[0], 7000)
+        # slicer settings: 0 = default, N% of default, machine_max_* ignored
+        s = ["M204 S1000", "; default_acceleration = 4000",
+             "; outer_wall_acceleration = 0", "; machine_max_acceleration_x = 20000"]
+        self.assertEqual(pk(s)[0], 4000)
+        self.assertEqual(pk(s + ["; travel_acceleration = 150%"]),
+                         (6000, "; travel_acceleration = 150% (line 5)"))
+        self.assertEqual(pk(["; top_surface_acceleration = 9000,5000"])[0], 9000)
+        self.assertEqual(pk(["G1 X1", "; just a comment"]), (0, None))
+        self.assertEqual(pk([b"M204 S2500\n"])[0], 2500)
+
+    def test_max_accel_exit_codes(self):
+        d = tempfile.mkdtemp()
+        try:
+            p, empty = os.path.join(d, "a.gcode"), os.path.join(d, "b.gcode")
+            write(p, b"M204 S5000\nG1 X1\n; default_acceleration = 5000\n")
+            write(empty, b"G1 X1\n")
+            with quiet(), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(self.ca.main([p, "--max-accel", "5000"]), 0)
+                self.assertEqual(self.ca.main([p, "--max-accel", "4999"]), self.ca.EXIT_OVER_CAP)
+                self.assertEqual(self.ca.main([empty, "--max-accel", "5000"]), self.ca.EXIT_NO_ACCEL)
+                self.assertEqual(self.ca.main([p, "--x", "9000", "--y", "4000",
+                                               "--max-accel", "4000"]), self.ca.EXIT_OVER_CAP)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 class TestNightProfile(unittest.TestCase):
     def test_night3_out_of_the_authors_ringing_band(self):
         n3 = sc.ACCEL["night3"]
