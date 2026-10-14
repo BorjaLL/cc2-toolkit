@@ -9,6 +9,9 @@ Windows with ElegooSlicer 1.5.3.x and stock CC2 firmware OTA 01.03.02.36.
 | `send_cc2.py` | Uploads G-code to the printer over SFTP, lists / deletes files, starts a print remotely |
 | `mf2stl.py` | 3MF (production extension) to binary STL: `python mf2stl.py in.3mf out.stl [build_objectid]` |
 | `adaptive_layers.py` | adaptive layer height profile into a copy of a 3MF/STL (used by `slice_cc2.py --adaptive`; also standalone: `python adaptive_layers.py in.3mf out.3mf --quality 0.5`) |
+| `check_accel.py` | compares the accelerations in a G-code with your input shaper results (`--log elegoo.log` or `--x/--y`); `--max-accel N` refuses G-code above your own cap, see "Accel" below |
+| `thumbnail.py` | adds the preview picture the CC2 shows in its file list (used by `slice_cc2.py --thumbnail`; standalone: `python thumbnail.py file.gcode`). Needs `pip install pillow` |
+| `cc2_gcode.py` | shared M600 tokenizer (stripping and refusing use the same one), `TOOLKIT_VERSION` / `API_VERSION` |
 
 `slice_cc2.py` exists because the slicer CLI cannot resolve `inherits:` chains
 from `--load-settings` files, so the profiles must be flattened first. The GUI
@@ -43,6 +46,18 @@ Exit codes (stable, small; the slicer's own code is still printed on the
 | 4 | `slicer_failed` | the slicer exited non-zero (`slicer_exit`, `diagnostics`) |
 | 5 | `no_output` | the slicer exited 0 but wrote no G-code |
 
+When the slicer fails with a code it is known to use, a one-line hint is printed
+on stdout and stored as `slicer_exit_hint` in `slice_result.json` (table
+`SLICER_EXIT_HINTS`, lookup `slicer_exit_hint()`):
+
+| Slicer exit | Meaning |
+|---|---|
+| -17 | profile not accepted (unresolved `inherits` chain or incompatible process) |
+| -21 | auto-arrange failed: the part does not fit with arrange spacing and the bed exclude zone. Place it yourself and pass `--no-arrange` |
+| -24 | 3MF from a newer slicer (the tool passes `--allow-newer-file`) |
+| -50 | object partly outside the printable area or inside the bed exclude zone. Place it fully inside and pass `--no-arrange` |
+| -100 | slicing error (e.g. a mesh with unmerged vertices) |
+
 Every run that reaches the slicer writes `<out>/slice_result.json`: `status`,
 `exit_code`, `slicer_exit` (+ `slicer_exit_signed`, e.g. -6), `outputs` (final
 path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
@@ -55,7 +70,7 @@ path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
 | `--name NAME` | none | rename the G-code to `NAME.gcode` in `--out` (`_plateN` added for several plates) |
 | `--filament pla\|plaplus\|plapro\|plamatte\|petghf\|asa\|abs` | `plapro` | stock Elegoo PLA / PLA+ / PLA PRO / PLA Matte / PETG HF / ASA / ABS @ECC2 (PETG HF/ASA/ABS are stock presets, untuned) |
 | `--layer 0.20\|0.12` | `0.20` | 0.20 Standard or 0.12 Fine base process |
-| `--accel stock\|capped\|antiwobble\|balanced` | `stock` | acceleration only, see below. `stock` does NOT turn off the quality overrides |
+| `--accel stock\|capped\|antiwobble\|night\|night2\|night3\|balanced` | `stock` | acceleration (the night presets also set speeds), see below. `stock` does NOT turn off the quality overrides |
 | `--pure-stock` | off | skip ALL the author's overrides (quality set, accel, 55 C PLA bed) and use the flattened stock Elegoo profiles only, see below |
 | `--bed C` | 55 for the PLA family, else stock | bed temp; `--bed 60` for large flat or tall thin PLA parts |
 | `--auxfan N` | stock | side-fan %; 0-30 for large flat PLA parts (see `guides/gotchas.md`) |
@@ -67,9 +82,11 @@ path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
 | `--slots N` (alias `--slot-count N`) | `1` | a count: load the filament into the first N slicer slots, i.e. tools T0..T(N-1) (needed when a 3MF uses slots above 1). The physical CANVAS slot per tool is picked at start (`slot_map`), not here |
 | `--plate N` | `0` (all) | slice one plate of a multi-plate 3MF |
 | `--supports` | off | normal(auto) supports, build plate only, 25 degree threshold |
-| `--no-iron` / `--no-brim` / `--no-arrange` | off | skip ironing / brim / auto-arrange |
+| `--iron top\|topmost\|solid` | the designer's | iron although the model does not ask for it (default: the 3MF's `ironing_type`; STL input = no ironing) |
+| `--no-iron` / `--no-brim` / `--no-arrange` | off | no ironing even if the 3MF irons / no brim / no auto-arrange |
 | `--adaptive [QUALITY]` | off (`0.5` when given alone) | adaptive layer height, see below. QUALITY 0 = finest .. 0.5 = base layer .. 1 = fastest |
 | `--adaptive-smooth RADIUS` | `0` (off) | with `--adaptive`: smooth the profile like the GUI Smooth button (radius in layers; GUI default 5) |
+| `--thumbnail` | off | add the file-list preview picture (CLI slices have none), see below. Needs Pillow |
 | `--keep-pauses` | off | keep `M600` lines (default strips them, the CC2 hangs on them) |
 | `--send [NAME]` | off | upload the result with `send_cc2.py` after slicing |
 | `--json` | off | print the run result (`slice_result.json`) as one JSON line at the end |
@@ -83,13 +100,40 @@ picks the acceleration values; it does not switch the rest off. Use
 `--pure-stock` for that (below).
 
 Process: `sparse_infill_pattern=cubic`, `top_surface_pattern=monotonic`,
-`ironing_type=top` (flow 15%, speed 15), `top_shell_layers=5`,
-`top_shell_thickness=0.9`, `curr_bed_type=Textured PEI Plate`,
-`brim_type=auto_brim`, and `solid_infill_direction=0` (untested on a print: it
-comes from a gcode-only estimate, see `guides/tuning.md`). Filament: bed temp 55 C
+`top_shell_layers=5`, `top_shell_thickness=0.9`,
+`curr_bed_type=Textured PEI Plate`, `brim_type=auto_brim`,
+`solid_infill_direction=0` and `solid_infill_rotate_template=0` (solid infill
+along X on every layer; untested on a print: it comes from a gcode-only
+estimate, see `guides/tuning.md`). Ironing on/off follows the designer's 3MF
+`ironing_type` (STL input: off); `--iron top|topmost|solid` forces it on,
+`--no-iron` forces it off. When on: flow 15%, speed 15. Filament: bed temp 55 C
 (textured and smooth plate, first layer and after) for `pla`/`plaplus`/`plapro`/`plamatte`
 unless you pass `--bed`. Flow and aux fan stay at the profile stock. Anything you disagree with: override it with
 `--proc KEY=VALUE`, which wins over everything baked in.
+
+### Preflight (3MF input)
+
+Before slicing a 3MF, the tool prints (read-only, it never blocks):
+
+- the designer's process settings the CC2 profile replaces (`layer_height`,
+  `sparse_infill_density`, `wall_loops`, brim, supports ...): add
+  `--proc KEY=VALUE` to keep one;
+- per-object overrides in the 3MF, which the CLI does honour;
+- a warning for tall, thin standing parts (at least `TALL_MIN_H` = 40 mm high
+  and at least `TALL_RATIO` = 4 times the smallest footprint side): short layers
+  and ironing dwells band or squash them, see `guides/gotchas.md`.
+
+### `--thumbnail` (file-list preview)
+
+ElegooSlicer renders the preview the CC2 shows in its file list only in the GUI:
+CLI G-code has none. `--thumbnail` draws one from the toolpaths themselves
+(`thumbnail.py`, 144x144 PNG, shaded by wall direction and height, in the
+filament colour) and inserts the same `; THUMBNAIL_BLOCK_START` block the GUI
+writes. Needs Pillow (`pip install pillow`); without it the run stops before
+slicing. The CC2 silently drops a preview whose base64 ends in `=` padding, so
+the PNG is padded to a length that is a multiple of 3; it is also kept under
+about 10 KB of base64 (the largest size seen working). Existing G-code:
+`python tools/thumbnail.py file.gcode [--force] [--png preview.png]`.
 
 ### `--pure-stock`
 
@@ -133,8 +177,25 @@ shaper results decide your numbers: see `guides/find-your-numbers.md` and
 
 - `capped`: default 5000 / outer wall 3000 / first-layer travel 5000, stock speeds.
 - `antiwobble`: default 3000 / outer wall 2000 / inner 3000 / top 1500 / outer wall speed 120.
+- `night`: `antiwobble` accel plus travel accel 3000 and travel speed 250.
+- `night2`: default accel 2000, walls 1500, travel 1500 at 150 mm/s, slower
+  walls and infill (about +14% time vs `night`).
+- `night3`: `night2` accels with slow speeds baked in (no screen speed mode
+  needed): walls, sparse and internal solid infill 75 mm/s, top surface 45,
+  travel 75, and `travel_speed_z=5` (slow Z-hop drops: the stock hop lands with
+  an audible clack). The author's printer rang loudly at 50-62.5 mm/s (belt
+  noise) and was quiet at 35-45 and 75-80, so the speeds sit outside that band.
+  Your band depends on belt tension: sweep yours (`guides/tuning.md`) and adjust
+  with `--proc`.
 - `balanced`: default 8000 / outer wall 5000 / outer wall speed 150.
 - `stock`: acceleration left at the Elegoo profile value.
+
+`check_accel.py --max-accel N model.gcode` is a hard check for your own cap:
+it reads every acceleration the G-code commands (`M204 S/P/T`,
+`SET_VELOCITY_LIMIT ACCEL=`, and the slicer's `; *_acceleration =` settings, so
+a `--proc` override cannot hide one) and exits 3 above N, 4 when the G-code
+commands none (the firmware default would apply), 0 otherwise. Without
+`--max-accel` it compares against your input shaper estimates and only reports.
 
 The checked-in test prints under `calibration/` and `filaments/swatch/` were
 sliced with `antiwobble`. Their scripts call `slice_cc2.py` with default
@@ -177,7 +238,8 @@ Verified 2026-09-29 **only** on firmware OTA 01.03.02.36 with CANVAS slot 1, in
 cloud mode (no LAN Only). Do not expect it to work on other firmware. How it
 works is written up in `guides/firmware-and-ssh.md`. Single colour from CANVAS
 slot 1 only. It fails closed: it refuses if the printer's log says it is printing
-or paused, if `elegoo.log` cannot be read or has no `print_state` line (override:
+or paused, if neither `/opt/usr/logs/elegoo.log` nor the rotated `elegoo.1.log`
+(rotation at about 10 MB) has a readable `print_state` line (override:
 `--force-start`), or if `/dev/pts/0` is not a character device. It confirms the
 start only when a new `cmd_SDCARD_PRINT_FILE` line for your file appears in the
 log after sending. It cannot see the bed: clear it first. Before every start,
@@ -199,7 +261,10 @@ place. Nothing below changes the command-line behaviour.
 - The supported API is each module's `__all__` (plus `cc2_gcode.py`). Wrappers
   should import only those names and check `API_VERSION` (2 since toolkit 1.2.0;
   it goes up only on an incompatible change to that list, a hook or a signature;
-  toolkit 1.3.0 added `adaptive_models()` and `adaptive_layers.py`, API still 2).
+  toolkit 1.3.0 added `adaptive_models()` and `adaptive_layers.py`; toolkit 1.4.0
+  added `SLICER_EXIT_HINTS` / `slicer_exit_hint()`, `--thumbnail` with
+  `thumbnail.py` (`thumbnail.add(path, force=False, png=None)`) and
+  `check_accel.py --max-accel` (`peak_accel()`); API still 2).
   `TOOLKIT_VERSION` is reported in `slice_result.json`.
 - `slice_cc2.main(argv=None, hooks=None)`: `hooks` is any object with optional
   `add_arguments(ap)` (add options, change defaults), `parsed(a)` (right after
