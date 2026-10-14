@@ -54,7 +54,8 @@ all nine transitions, print bounds, and the slicer's estimates. The validator
 checks the effective temperature at all 56,588 printed extrusion moves,
 CC2 startup/bed leveling, final heater shutdown, and stock flow/retraction/PA.
 The mesh is watertight and the printed geometry fits within the build area.
-This file has been checked programmatically, **not physically print-tested**.
+This file has been checked programmatically, and the author printed it on
+2026-09-21 (results below).
 
 The STL is included for inspection. Reslicing that STL alone will lose the
 temperature changes: use the provided G-code or rebuild through the script.
@@ -62,3 +63,53 @@ temperature changes: use the provided G-code or rebuild through the script.
 Source model and matching calibration implementation:
 [ElegooSlicer v1.5.3.5](https://github.com/elegooofficial/ElegooSlicer/tree/v1.5.3.5/resources/calib/temperature_tower),
 [Plater::calib_temp](https://github.com/elegooofficial/ElegooSlicer/blob/v1.5.3.5/src/slic3r/GUI/Plater.cpp#L13313-L13390).
+
+## Other filaments and ranges
+
+```powershell
+uv run calibration/temperature/build_tower.py --preset "Elegoo PLA Matte @ECC2" --tag PLAMatte
+uv run calibration/temperature/build_tower.py --preset "Elegoo PLA+ @ECC2" --tag PLAPlus --top 240
+uv run calibration/temperature/build_tower.py --preset "Elegoo PETG HF @ECC2" --tag PETGHF --top 260 --out D:/towers
+```
+
+| Option | Meaning |
+|---|---|
+| `--preset` | any stock Elegoo CC2 filament preset; its bed temp, flow and PA are used and checked in the output |
+| `--tag` | file name tag, required with a non-default preset (keeps the committed emoji PLA files intact) |
+| `--top` | hottest (bottom) block in C; the tower always spans `top` down to `top - 40` in 5 C blocks, labels match (the bundled model is cropped at that height) |
+| `--brim` | outer brim width in mm (default 5); 10 for a filament that lifts off the bed |
+| `--accel` | a `tools/slice_cc2.py` ACCEL profile name, to judge the tower at the accelerations you print with (default `stock`) |
+| `--out` | output folder (default: this folder) |
+
+It writes `CC2_<Tag>_TempTower_<top>-<top-40>C_0.4mm.gcode`, `verification_<Tag>.json`,
+the cropped STL and `profiles/flat_*.json` into the output folder. With the default
+`--out`, the profiles in `profiles/` are rewritten: restore them with `git checkout`
+afterwards, or use `--out`. If `tools/thumbnail.py` is present, the G-code also gets a
+printer file-list preview. ElegooSlicer is found through `ELEGOO_SLICER_DIR`
+(default `C:/Program Files/ElegooSlicer`).
+
+Only the emoji PLA tower is committed. The other ranges (for example 240-200 or
+220-180) are cropped from the same ElegooSlicer model on every run, so their STLs are not
+stored here.
+
+## Reading page
+
+Open [evaluate-temp-tower.html](evaluate-temp-tower.html) in a browser: what each part of
+a block tests, cold / right / hot pictures for the five checks, and a guided reading
+(set the hottest block, click one answer per block and check) that picks the temperature
+and writes a summary to copy into your filament notes. Nothing leaves the browser.
+
+## Author's results (one printer, 2026-09 to 2026-10)
+
+| Filament (preset) | Tower | Picked | Notes |
+|---|---|---|---|
+| Elegoo PLA "emoji" (`Elegoo PLA @ECC2`) | 230-190 | 210 | 190 snapped, 195-200 creaked, 205 and up solid; no upper limit found |
+| Elegoo PLA Matte (`Elegoo PLA Matte @ECC2`) | 230-190, bed 65 C | 215 | |
+| DEEPLEE PLA+ 2.0 (`Elegoo PLA+ @ECC2`) | 230-190 | 220 | 215 near-identical |
+| SUNLU PLA+ (`Elegoo PLA+ @ECC2`) | 240-200 | 215 | 200-215 crisp; from 220 the numbers blob; 230-240 string |
+
+## License
+
+`build_tower.py` and `evaluate-temp-tower.html` are part of this toolkit. Every
+`Elegoo_TempTower_*.stl`, the G-code sliced from them and `profiles/flat_*.json` are
+derived from ElegooSlicer (AGPL-3.0) and stay under its license (see `NOTICE.md`).

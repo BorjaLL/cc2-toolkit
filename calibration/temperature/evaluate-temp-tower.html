@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to read a temperature tower (CC2)</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #fff; --ink: #1f2328; --mute: #5b6470; --line: #d9d4c7;
+    --good: #2f8f4e; --goodbg: #e5f4e9; --ok: #b7791f; --okbg: #fbf0dc; --bad: #c0392b; --badbg: #f9e3e0;
+    --hot: #d9480f; --cold: #1c7ed6; --plastic: #e9e6df; --plastic2: #cfcac0; --stroke: #6f6a60;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1060px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 22px; margin: 44px 0 10px; padding-top: 10px; border-top: 2px solid var(--line); }
+  h3 { font-size: 17px; margin: 0 0 6px; }
+  p { margin: 6px 0 10px; }
+  .lead { color: var(--mute); font-size: 17px; margin-bottom: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .step b.n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; margin-right: 6px; font-size: 14px; }
+  .tri { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .tri figure { margin: 0; border-radius: 10px; padding: 8px 8px 10px; text-align: center; border: 2px solid transparent; }
+  .tri figure.cold { background: #e7f1fb; border-color: #a5c8ef; }
+  .tri figure.good { background: var(--goodbg); border-color: #9fd3ae; }
+  .tri figure.hot { background: #fde9e0; border-color: #f2b39a; }
+  .tri figcaption { font-size: 14px; }
+  .tri figcaption b { display: block; font-size: 15px; }
+  .cold b { color: var(--cold); } .good b { color: var(--good); } .hot b { color: var(--hot); }
+  .check { margin-top: 22px; }
+  .check .head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #eee; color: var(--mute); }
+  .tag.w3 { background: var(--badbg); color: var(--bad); } .tag.w2 { background: var(--okbg); color: var(--ok); } .tag.w1 { background: #eceff3; color: var(--mute); }
+  .how { color: var(--mute); font-size: 14.5px; }
+  .grid2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .grid2, .tri { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 6px; text-align: center; }
+  th:first-child, td:first-child { text-align: left; }
+  td.t { font-weight: 700; font-variant-numeric: tabular-nums; }
+  button.cell { width: 100%; min-width: 64px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; background: #fafafa; cursor: pointer; font: inherit; font-size: 13px; }
+  button.cell[data-v="good"] { background: var(--goodbg); border-color: #9fd3ae; color: var(--good); font-weight: 600; }
+  button.cell[data-v="ok"] { background: var(--okbg); border-color: #ecc98a; color: var(--ok); font-weight: 600; }
+  button.cell[data-v="bad"] { background: var(--badbg); border-color: #eba59c; color: var(--bad); font-weight: 600; }
+  tr.pick td { background: #fff7d6; }
+  tr.pass td.t::after { content: " ok"; color: var(--good); font-size: 11px; font-weight: 600; }
+  #verdict { font-size: 18px; margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: #fff7d6; border: 1px solid #ecd98a; }
+  .small { font-size: 13.5px; color: var(--mute); }
+  .ex { border-left: 5px solid var(--good); }
+  .warn { border-left: 5px solid var(--ok); }
+  code { background: #efece4; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+  .legend span { display: inline-block; margin-right: 14px; font-size: 13px; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+
+  /* wizard */
+  .wiz { background: var(--card); border: 2px solid #7048e8; border-radius: 14px; padding: 18px; margin-top: 22px; }
+  .dots { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .dots button { border: 1px solid var(--line); background: #f3f1ec; border-radius: 99px; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; color: var(--mute); }
+  .dots button.on { background: #7048e8; color: #fff; border-color: #7048e8; }
+  .dots button.done { background: #ece6fd; color: #4c2fc0; }
+  .wrow { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid #eee9de; }
+  .wrow .t { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opts button { border: 1px solid var(--line); background: #fafafa; border-radius: 99px; padding: 5px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+  .opts button:hover { border-color: #999; }
+  .opts button.sel.good { background: var(--goodbg); border-color: var(--good); color: var(--good); font-weight: 600; }
+  .opts button.sel.ok { background: var(--okbg); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+  .opts button.sel.bad { background: var(--badbg); border-color: var(--bad); color: var(--bad); font-weight: 600; }
+  .nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; background: #7048e8; color: #fff; }
+  .btn.ghost { background: #eeeae2; color: var(--ink); }
+  .btn.small { padding: 5px 10px; font-size: 13px; font-weight: 500; }
+  .wiz textarea { width: 100%; font: 13.5px/1.45 ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .wiz select, .wiz input[type=text] { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  .big { font-size: 24px; font-weight: 700; margin: 4px 0; }
+  .mini { display: grid; grid-template-columns: 56px 1fr; gap: 3px 8px; font-size: 14px; }
+  .mini .b { border-radius: 6px; padding: 3px 8px; text-align: center; font-weight: 700; border: 1px solid #0001; }
+  .mini .b.pass { background: var(--goodbg); } .mini .b.fail { background: var(--badbg); } .mini .b.pick { outline: 3px solid #d4a017; }
+  .mini .why { color: var(--mute); padding-top: 3px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>How to read a temperature tower</h1>
+<p class="lead">Elegoo CC2 tower from <code>build_tower.py</code>, 9 blocks, <b style="color:var(--hot)">hottest at the bottom</b> (230 &deg;C by default, <code>--top</code>) to <b style="color:var(--cold)">40 &deg;C cooler at the top</b>, 5 &deg;C per block. About 10 minutes once the print is cold.</p>
+
+<div class="steps">
+  <div class="step"><b class="n">1</b><b>Let it cool</b><br><span class="small">Off the plate, 10 min. Warm PLA bends instead of snapping.</span></div>
+  <div class="step"><b class="n">2</b><b>Look</b><br><span class="small">Strings, overhang, bridge, surface. Under a raking light (phone torch from the side).</span></div>
+  <div class="step"><b class="n">3</b><b>Break it</b><br><span class="small">Bend each block between two pliers. This is the check that matters most.</span></div>
+  <div class="step"><b class="n">4</b><b>Score + pick</b><br><span class="small">The guided reading below picks for you and writes a summary you can copy.</span></div>
+</div>
+
+<!-- ============ WIZARD ============ -->
+<div class="wiz" id="wiz">
+  <div class="dots" id="dots"></div>
+  <div id="pane"></div>
+  <div class="nav"><button class="btn ghost" id="prev">&larr; Back</button><span><button class="btn ghost small" id="wreset">Start over</button></span><button class="btn" id="next">Next &rarr;</button></div>
+</div>
+<p class="small">Saved in this browser as you click. The reference sections below show the same pictures in full.</p>
+
+<!-- ============ ANATOMY ============ -->
+<h2>1. What each part of a block tests</h2>
+<div class="grid2">
+  <div class="card">
+    <svg viewBox="0 0 520 300" width="100%" role="img" aria-label="One tower block with labelled test features">
+      <defs>
+        <pattern id="layers" width="6" height="4" patternUnits="userSpaceOnUse"><rect width="6" height="4" fill="#e9e6df"/><line x1="0" y1="3.6" x2="6" y2="3.6" stroke="#d6d1c6" stroke-width=".8"/></pattern>
+      </defs>
+      <!-- block body: left curved overhang, right rounded end -->
+      <path d="M40 70 H430 Q470 70 470 110 V230 Q470 250 450 250 H150 Q110 160 40 100 Z" fill="url(#layers)" stroke="var(--stroke)" stroke-width="2"/>
+      <!-- top slab of the next block -->
+      <rect x="40" y="50" width="430" height="20" rx="4" fill="#dcd8cf" stroke="var(--stroke)" stroke-width="1.5"/>
+      <!-- bridge window -->
+      <rect x="215" y="95" width="130" height="45" fill="#fff" stroke="var(--stroke)" stroke-width="2"/>
+      <!-- circle window + cone -->
+      <circle cx="405" cy="160" r="42" fill="#fff" stroke="var(--stroke)" stroke-width="2"/>
+      <path d="M392 230 L405 125 L418 230 Z" fill="#cfcac0" stroke="var(--stroke)" stroke-width="1.5"/>
+      <!-- embossed number -->
+      <text x="250" y="210" font-size="38" font-weight="700" fill="#cfcac0" stroke="var(--stroke)" stroke-width=".8" text-anchor="middle" font-family="system-ui">215</text>
+      <!-- callouts -->
+      <g font-size="13" font-weight="700" font-family="system-ui">
+        <circle cx="95" cy="118" r="13" fill="#7048e8"/><text x="95" y="123" fill="#fff" text-anchor="middle">A</text>
+        <circle cx="280" cy="88" r="13" fill="#7048e8"/><text x="280" y="93" fill="#fff" text-anchor="middle">B</text>
+        <circle cx="455" cy="128" r="13" fill="#7048e8"/><text x="455" y="133" fill="#fff" text-anchor="middle">C</text>
+        <circle cx="185" cy="200" r="13" fill="#7048e8"/><text x="185" y="205" fill="#fff" text-anchor="middle">D</text>
+        <circle cx="490" cy="62" r="13" fill="#7048e8"/><text x="490" y="67" fill="#fff" text-anchor="middle">E</text>
+      </g>
+      <text x="40" y="280" font-size="13" fill="var(--mute)" font-family="system-ui">Front view of one 10 mm block (simplified). E = the seam to the block above.</text>
+    </svg>
+  </div>
+  <div class="card">
+    <table>
+      <tr><th></th><th style="text-align:left">Feature</th><th style="text-align:left">Tests</th></tr>
+      <tr><td><b style="color:#7048e8">A</b></td><td style="text-align:left">Curved left overhang</td><td style="text-align:left">Overhang quality (too hot = droops)</td></tr>
+      <tr><td><b style="color:#7048e8">B</b></td><td style="text-align:left">Roof of the rectangle hole</td><td style="text-align:left">Bridging (too hot = sags)</td></tr>
+      <tr><td><b style="color:#7048e8">C</b></td><td style="text-align:left">Cone in round hole</td><td style="text-align:left">Stringing + small-detail cooling</td></tr>
+      <tr><td><b style="color:#7048e8">D</b></td><td style="text-align:left">Embossed number + flat face</td><td style="text-align:left">Surface finish, detail, matte vs gloss</td></tr>
+      <tr><td><b style="color:#7048e8">E</b></td><td style="text-align:left">Block-to-block seam, whole block</td><td style="text-align:left">Layer bond / strength (snap test)</td></tr>
+    </table>
+    <p class="small" style="margin-top:10px">Judge the <b>middle</b> of each block. The bottom 1-2 mm of a block is still changing temperature from the block below.</p>
+  </div>
+</div>
+
+<!-- ============ THE CHECKS ============ -->
+<h2>2. The five checks, cold vs right vs hot</h2>
+<p class="legend"><span><i class="sw" style="background:#a5c8ef"></i>too cold (top of tower)</span><span><i class="sw" style="background:#9fd3ae"></i>what you want</span><span><i class="sw" style="background:#f2b39a"></i>too hot (bottom of tower)</span></p>
+
+<!-- C: stringing -->
+<div class="check card" id="chk-string">
+  <div class="head"><h3>C. Stringing</h3><span class="tag w2">important for looks, fixable with retraction too</span></div>
+  <p class="how">Look across the round hole and between the cone and the wall. Hold it against a dark background.</p>
+  <div class="tri">
+    <figure class="cold">
+      <svg viewBox="0 0 200 120" width="100%"><circle cx="100" cy="62" r="46" fill="#fff" stroke="var(--stroke)" stroke-width="2"/><path d="M90 108 L100 20 L110 108 Z" fill="#cfcac0" stroke="var(--stroke)" stroke-width="1.5"/>
+        <path d="M100 20 l-3 6 l4 4 l-4 5 l4 4" fill="none" stroke="var(--cold)" stroke-width="1.5"/></svg>
+      <figcaption><b>Too cold</b>No strings, but the cone tip is ragged or missing.</figcaption>
+    </figure>
+    <figure class="good">
+      <svg viewBox="0 0 200 120" width="100%"><circle cx="100" cy="62" r="46" fill="#fff" stroke="var(--stroke)" stroke-width="2"/><path d="M90 108 L100 20 L110 108 Z" fill="#cfcac0" stroke="var(--stroke)" stroke-width="1.5"/></svg>
+      <figcaption><b>Right</b>Clean hole, sharp cone. A single wisp that brushes off is fine.</figcaption>
+    </figure>
+    <figure class="hot">
+      <svg viewBox="0 0 200 120" width="100%"><circle cx="100" cy="62" r="46" fill="#fff" stroke="var(--stroke)" stroke-width="2"/><path d="M90 108 L100 20 L110 108 Z" fill="#cfcac0" stroke="var(--stroke)" stroke-width="1.5"/>
+        <g stroke="#8a857b" stroke-width=".9" fill="none"><path d="M58 40 Q80 48 97 44"/><path d="M56 62 Q78 70 95 66"/><path d="M60 85 Q80 92 93 88"/><path d="M104 40 Q124 46 144 42"/><path d="M106 60 Q126 68 146 62"/><path d="M108 82 Q128 90 142 86"/><path d="M62 52 Q82 58 96 55"/><path d="M105 72 Q126 80 145 74"/></g></svg>
+      <figcaption><b>Too hot</b>Hairs or webs across the hole, blobs on the cone.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- A: overhang -->
+<div class="check card" id="chk-over">
+  <div class="head"><h3>A. Overhang</h3><span class="tag w2">important</span></div>
+  <p class="how">Look at the underside of the curved lip from below and the side, with the torch raking across it.</p>
+  <div class="tri">
+    <figure class="cold">
+      <svg viewBox="0 0 200 120" width="100%"><path d="M20 20 H180 V110 H100 Q60 50 20 34 Z" fill="#e9e6df" stroke="var(--stroke)" stroke-width="2"/>
+        <g stroke="var(--cold)" stroke-width="1.4"><path d="M30 37 l4 -4"/><path d="M45 44 l4 -4"/><path d="M60 54 l4 -4"/><path d="M74 66 l4 -4"/><path d="M86 80 l4 -4"/></g></svg>
+      <figcaption><b>Too cold</b>Fine, often the cleanest overhang. Can look rough or under-filled.</figcaption>
+    </figure>
+    <figure class="good">
+      <svg viewBox="0 0 200 120" width="100%"><path d="M20 20 H180 V110 H100 Q60 50 20 34 Z" fill="#e9e6df" stroke="var(--stroke)" stroke-width="2"/></svg>
+      <figcaption><b>Right</b>Smooth even curve, same look as the flat face.</figcaption>
+    </figure>
+    <figure class="hot">
+      <svg viewBox="0 0 200 120" width="100%"><path d="M20 20 H180 V110 H100 Q60 50 20 34 Z" fill="#e9e6df" stroke="var(--stroke)" stroke-width="2"/>
+        <path d="M20 34 q6 8 12 2 q6 10 12 4 q6 12 12 6 q6 12 12 8 q6 12 12 10 q5 14 10 14 q4 12 10 16" fill="none" stroke="var(--hot)" stroke-width="2.2"/></svg>
+      <figcaption><b>Too hot</b>Droopy, curled or wavy edge, rough "scales" underneath.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- B: bridge -->
+<div class="check card" id="chk-bridge">
+  <div class="head"><h3>B. Bridge</h3><span class="tag w1">nice to have</span></div>
+  <p class="how">Look up into the rectangle hole at its roof.</p>
+  <div class="tri">
+    <figure class="cold">
+      <svg viewBox="0 0 200 120" width="100%"><rect x="20" y="20" width="160" height="80" fill="#e9e6df" stroke="var(--stroke)" stroke-width="2"/><rect x="40" y="40" width="120" height="44" fill="#fff" stroke="var(--stroke)" stroke-width="2"/>
+        <g stroke="var(--cold)" stroke-width="1.5"><path d="M70 40 v6"/><path d="M110 40 v5"/></g></svg>
+      <figcaption><b>Too cold</b>Mostly flat. A strand or two can snap and hang.</figcaption>
+    </figure>
+    <figure class="good">
+      <svg viewBox="0 0 200 120" width="100%"><rect x="20" y="20" width="160" height="80" fill="#e9e6df" stroke="var(--stroke)" stroke-width="2"/><rect x="40" y="40" width="120" height="44" fill="#fff" stroke="var(--stroke)" stroke-width="2"/></svg>
+      <figcaption><b>Right</b>Flat, tight strands across the roof.</figcaption>
+    </figure>
+    <figure class="hot">
+      <svg viewBox="0 0 200 120" width="100%"><rect x="20" y="20" width="160" height="80" fill="#e9e6df" stroke="var(--stroke)" stroke-width="2"/><rect x="40" y="40" width="120" height="44" fill="#fff" stroke="var(--stroke)" stroke-width="2"/>
+        <g fill="none" stroke="var(--hot)" stroke-width="1.6"><path d="M40 41 Q100 62 160 41"/><path d="M40 41 Q100 56 160 41"/></g></svg>
+      <figcaption><b>Too hot</b>Strands sag in a curve, hang into the hole.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- D: surface -->
+<div class="check card" id="chk-surf">
+  <div class="head"><h3>D. Surface + number</h3><span class="tag w1">nice to have, matters more for matte PLA</span></div>
+  <p class="how">Read the number, run a fingernail over the face, tilt it in the light.</p>
+  <div class="tri">
+    <figure class="cold">
+      <svg viewBox="0 0 200 120" width="100%"><rect x="20" y="20" width="160" height="80" rx="4" fill="#ebe8e1" stroke="var(--stroke)" stroke-width="2"/>
+        <text x="100" y="78" text-anchor="middle" font-size="40" font-weight="700" fill="none" stroke="#6f6a60" stroke-width="1.6" stroke-dasharray="4 3" font-family="system-ui">195</text></svg>
+      <figcaption><b>Too cold</b>Very matte or chalky, gaps between lines, broken edges on digits.</figcaption>
+    </figure>
+    <figure class="good">
+      <svg viewBox="0 0 200 120" width="100%"><rect x="20" y="20" width="160" height="80" rx="4" fill="#ebe8e1" stroke="var(--stroke)" stroke-width="2"/>
+        <text x="100" y="78" text-anchor="middle" font-size="40" font-weight="700" fill="#cfcac0" stroke="#6f6a60" stroke-width="1.2" font-family="system-ui">215</text></svg>
+      <figcaption><b>Right</b>Even finish, crisp digits, layers fused.</figcaption>
+    </figure>
+    <figure class="hot">
+      <svg viewBox="0 0 200 120" width="100%"><defs><filter id="blob"><feGaussianBlur stdDeviation="1.4"/></filter><linearGradient id="gl" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+        <rect x="20" y="20" width="160" height="80" rx="4" fill="#ebe8e1" stroke="var(--stroke)" stroke-width="2"/>
+        <rect x="20" y="30" width="160" height="16" fill="url(#gl)"/>
+        <text x="100" y="78" text-anchor="middle" font-size="40" font-weight="700" fill="#cfcac0" stroke="#6f6a60" stroke-width="2" filter="url(#blob)" font-family="system-ui">230</text>
+        <circle cx="40" cy="88" r="3" fill="#cfcac0" stroke="var(--stroke)"/><circle cx="165" cy="40" r="2.5" fill="#cfcac0" stroke="var(--stroke)"/></svg>
+      <figcaption><b>Too hot</b>Glossy band (matte PLA loses its matte), soft blurry digits, zits.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- E: bond -->
+<div class="check card" id="chk-bond">
+  <div class="head"><h3>E. Layer bond (snap test)</h3><span class="tag w3">most important: a fail here rules the block out</span></div>
+  <p class="how">Grip the tower with pliers just below a block, second pliers on the block, bend sideways. Or flex the overhang lip (A) with your thumb. Start at the top (coldest).</p>
+  <div class="tri">
+    <figure class="cold">
+      <svg viewBox="0 0 200 136" width="100%"><g stroke="var(--stroke)" stroke-width="2" fill="#e9e6df">
+        <rect x="40" y="70" width="120" height="40" rx="3"/>
+        <path d="M44 66 L156 60 L156 22 L44 28 Z" transform="rotate(-8 100 60)"/></g>
+        <path d="M30 66 L170 66" stroke="var(--bad)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="100" y="130" text-anchor="middle" font-size="12" fill="var(--bad)" font-family="system-ui">clean snap along a layer line</text></svg>
+      <figcaption><b>Too cold</b>Snaps flat along a layer, little force, flat shiny break face. Creaks on bending.</figcaption>
+    </figure>
+    <figure class="good">
+      <svg viewBox="0 0 200 136" width="100%"><g stroke="var(--stroke)" stroke-width="2" fill="#e9e6df">
+        <path d="M40 110 V70 Q100 62 160 70 V110 Z"/>
+        <path d="M44 66 Q100 50 156 40 L150 10 Q100 20 48 30 Z"/></g>
+        <path d="M60 66 l6 -6 l6 6 l6 -7 l6 7 l6 -6 l6 6 l6 -7 l6 7" fill="none" stroke="var(--good)" stroke-width="2"/>
+        <text x="100" y="130" text-anchor="middle" font-size="12" fill="var(--good)" font-family="system-ui">bends, white stress marks</text></svg>
+      <figcaption><b>Right</b>Bends a lot first, whitens, breaks jagged or through the layers.</figcaption>
+    </figure>
+    <figure class="hot">
+      <svg viewBox="0 0 200 136" width="100%"><g stroke="var(--stroke)" stroke-width="2" fill="#e9e6df">
+        <path d="M40 110 V70 Q100 58 160 70 V110 Z"/>
+        <path d="M44 66 Q100 46 156 36 L150 6 Q100 16 48 26 Z"/></g>
+        <text x="100" y="130" text-anchor="middle" font-size="12" fill="var(--hot)" font-family="system-ui">strong; heat shows in the other checks</text></svg>
+      <figcaption><b>Too hot</b>Strongest bond. Heat shows up in the other checks, not here.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- ============ PICKING ============ -->
+<h2>3. How the pick is made</h2>
+<div class="grid2">
+  <div class="card">
+    <svg viewBox="0 0 440 330" width="100%" role="img" aria-label="Tower with pass band and pick">
+      <g font-family="system-ui" font-size="13">
+        <!-- tower blocks top 190 to bottom 230 -->
+        <g id="tw"></g>
+      </g>
+    </svg>
+    <p class="small">Example shape: the cold top fails the snap test, the hot bottom strings. Pick inside the green band, upper middle.</p>
+  </div>
+  <div class="card">
+    <ol style="margin:0; padding-left:20px">
+      <li><b>Floor</b> = coldest block that passes the snap test. Never print at or below a block that snapped.</li>
+      <li><b>Ceiling</b> = hottest block with clean strings and overhang.</li>
+      <li><b>Pick</b> the middle of floor..ceiling, rounding up when the band has an even count: hotter gives bond margin and copes with faster prints.</li>
+      <li>No ceiling found (even the hottest block looks fine)? Pick floor + 5.</li>
+      <li>Band empty (strings appear before bond is good)? Pick the bond floor and fix strings with retraction.</li>
+    </ol>
+    <p class="small" style="margin-top:10px">Then: record it with your filament notes (see <code>filaments/</code>) and run the flow and retraction tests at that temperature.</p>
+  </div>
+</div>
+
+<h2>4. Worked example (the author's tower)</h2>
+<div class="card ex">
+  <h3>Elegoo PLA "emoji" edition, 230-190 tower, 2026-09-21</h3>
+  <table style="margin-top:6px">
+    <tr><th>Block</th><th>190</th><th>195</th><th>200</th><th>205</th><th>210</th><th>215</th><th>220</th><th>225</th><th>230</th></tr>
+    <tr><td>Bond</td><td style="color:var(--bad)">snapped</td><td style="color:var(--ok)">creaked</td><td style="color:var(--ok)">creaked</td><td style="color:var(--good)">solid</td><td style="color:var(--good)">solid</td><td style="color:var(--good)">solid</td><td style="color:var(--good)">solid</td><td style="color:var(--good)">solid</td><td style="color:var(--good)">solid</td></tr>
+    <tr><td>Looks</td><td>-</td><td>-</td><td>-</td><td style="color:var(--good)">clean</td><td style="color:var(--good)">clean</td><td style="color:var(--good)">clean</td><td>fine</td><td>fine</td><td>fine</td></tr>
+  </table>
+  <p style="margin-top:8px">Floor 205, no ceiling (230 still fine). Picked <b>210</b>: one step of margin over the 200 creak zone. 215 noted as the hotter alternative.</p>
+</div>
+
+<div class="card warn" style="margin-top:12px">
+  <h3>Matte PLA notes</h3>
+  <p>Matte PLA has weaker layer bond than plain PLA, so the snap test usually sets the floor higher (often 210-215). The matte look fades toward gloss as it gets hotter: if finish matters, pick the coldest block that still passes the snap test with margin, and note where the gloss starts.</p>
+</div>
+
+</main>
+<script>
+const EX_TEMPS = [190,195,200,205,210,215,220,225,230]; // worked example diagram
+const towerTemps = top => Array.from({ length: 9 }, (_, i) => top - 40 + 5 * i);
+let TEMPS = EX_TEMPS.slice();
+// ---------- guided reading ----------
+const CHECKS = [
+  { id: "string", title: "C. Stringing", short: "strings", ask: "Look across the round hole against a dark background.",
+    opts: [["none", "Clean", "good"], ["wisp", "A wisp or two", "ok"], ["hairs", "Hairs / webs", "bad"], ["tip", "No strings, cone tip ragged", "ok"]] },
+  { id: "over", title: "A. Overhang", short: "overhang", ask: "Look under the curved lip with a torch from the side.",
+    opts: [["clean", "Smooth", "good"], ["rough", "Slightly rough", "ok"], ["droop", "Droopy / curled", "bad"]] },
+  { id: "bridge", title: "B. Bridge", short: "bridge", ask: "Look up at the roof of the rectangle hole.",
+    opts: [["flat", "Flat", "good"], ["slight", "Slight sag", "ok"], ["sag", "Sagging / hanging", "bad"]] },
+  { id: "surf", title: "D. Surface + number", short: "surface", ask: "Read the number, run a nail over the face, tilt it in the light.",
+    opts: [["crisp", "Crisp, even", "good"], ["gloss", "A few shiny spots", "ok"], ["glossband", "Whole face glossy", "ok"], ["blobby", "Blobby / soft digits", "bad"], ["chalky", "Chalky / gaps", "bad"]] },
+  { id: "bond", title: "E. Snap test (layer bond)", short: "bond", ask: "Last check: bend each block with pliers. Start at the top (coldest).",
+    opts: [["snapped", "Snapped easily", "bad"], ["creaked", "Creaked / cracked a bit", "ok"], ["solid", "Bent, held solid", "good"]] },
+];
+const LVL = {}; CHECKS.forEach(c => c.opts.forEach(o => LVL[c.id + ":" + o[0]] = o[2]));
+const LABEL = {}; CHECKS.forEach(c => c.opts.forEach(o => LABEL[c.id + ":" + o[0]] = o[1]));
+const KEY = "cc2-temp-tower-wizard-v3";
+let W = JSON.parse(localStorage.getItem(KEY) || "null") || { step: 0, fil: "", colour: "", top: 230, cur: "", r: {}, notes: {}, pick: null };
+TEMPS = towerTemps(W.top);
+let TOP_DOWN = TEMPS.slice(); // coldest first = top of the tower
+const save = () => localStorage.setItem(KEY, JSON.stringify(W));
+const get = (t, c) => (W.r[t] || {})[c];
+const STEPS = ["Setup"].concat(CHECKS.map(c => c.short), ["Result"]);
+const pane = document.getElementById("pane");
+
+function dots() {
+  document.getElementById("dots").innerHTML = STEPS.map((n, i) => {
+    const done = i > 0 && i <= CHECKS.length && TEMPS.some(t => get(t, CHECKS[i - 1].id));
+    return `<button data-i="${i}" class="${i === W.step ? "on" : done ? "done" : ""}">${i}. ${n}</button>`;
+  }).join("");
+}
+document.getElementById("dots").onclick = e => { const b = e.target.closest("button"); if (b) go(+b.dataset.i); };
+document.getElementById("prev").onclick = () => go(W.step - 1);
+document.getElementById("next").onclick = () => go(W.step + 1);
+document.getElementById("wreset").onclick = () => { W = { step: 0, fil: W.fil, colour: W.colour, top: W.top, cur: W.cur, r: {}, notes: {}, pick: null }; save(); draw(); };
+function go(i) { W.step = Math.max(0, Math.min(STEPS.length - 1, i)); save(); draw(); document.getElementById("wiz").scrollIntoView({ behavior: "smooth", block: "start" }); }
+
+function draw() {
+  dots();
+  document.getElementById("prev").style.visibility = W.step ? "visible" : "hidden";
+  document.getElementById("next").style.visibility = W.step < STEPS.length - 1 ? "visible" : "hidden";
+  if (W.step === 0) return drawSetup();
+  if (W.step <= CHECKS.length) return drawCheck(CHECKS[W.step - 1]);
+  drawResult();
+}
+
+function drawSetup() {
+  pane.innerHTML = `<h3>Which tower are you reading?</h3>
+    <p><label>Filament <input type="text" id="sf" value="${W.fil}" size="22" placeholder="brand and type"></label>
+    &nbsp; <label>Colour <input type="text" id="sc" value="${W.colour}" size="10"></label></p>
+    <p><label>Hottest (bottom) block <input type="text" id="st" value="${W.top}" size="4"> &deg;C</label>
+    &nbsp; <label>Temp you print it at now (optional) <input type="text" id="su" value="${W.cur}" size="4"></label></p>
+    <p class="small">Tower is cold? Good light ready? Pliers ready? Then hit Next. 5 checks, about 1-2 minutes each.</p>`;
+  pane.querySelector("#sf").oninput = e => { W.fil = e.target.value; save(); };
+  pane.querySelector("#sc").oninput = e => { W.colour = e.target.value; save(); };
+  pane.querySelector("#su").oninput = e => { W.cur = e.target.value; save(); };
+  pane.querySelector("#st").onchange = e => {
+    const t = parseInt(e.target.value, 10);
+    if (t >= 150 && t <= 350 && t % 5 === 0 && t !== W.top) { W.top = t; W.r = {}; W.pick = null; TEMPS = towerTemps(t); TOP_DOWN = TEMPS.slice(); save(); dots(); }
+    else e.target.value = W.top;
+  };
+}
+
+function drawCheck(c) {
+  const src = document.querySelector(`#chk-${c.id} .tri`);
+  pane.innerHTML = `<h3>${c.title}</h3><p class="how">${c.ask}</p><div id="pics"></div>
+    <p class="small" style="margin-top:12px">One click per block (click again to clear). Top of the tower first.
+    <button class="btn ghost small" id="fill">Set unanswered to "${c.opts.find(o => o[2] === "good")[1]}"</button></p>
+    <div id="rows"></div>
+    <p><textarea id="note" rows="2" placeholder="Notes for this check (optional)">${W.notes[c.id] || ""}</textarea></p>`;
+  if (src) { const cl = src.cloneNode(true); cl.style.transform = "scale(.85)"; cl.style.transformOrigin = "top center"; cl.style.marginBottom = "-40px"; pane.querySelector("#pics").appendChild(cl); }
+  const rows = pane.querySelector("#rows");
+  rows.innerHTML = TOP_DOWN.map(t => `<div class="wrow"><span class="t">${t}</span><div class="opts">${c.opts.map(o =>
+    `<button data-t="${t}" data-v="${o[0]}" class="${o[2]} ${get(t, c.id) === o[0] ? "sel" : ""}">${o[1]}</button>`).join("")}</div></div>`).join("");
+  rows.onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const t = b.dataset.t; W.r[t] = W.r[t] || {};
+    W.r[t][c.id] = W.r[t][c.id] === b.dataset.v ? undefined : b.dataset.v;
+    save(); drawCheck(c); dots();
+  };
+  pane.querySelector("#fill").onclick = () => {
+    const g = c.opts.find(o => o[2] === "good")[0];
+    TEMPS.forEach(t => { W.r[t] = W.r[t] || {}; if (!W.r[t][c.id]) W.r[t][c.id] = g; });
+    save(); drawCheck(c); dots();
+  };
+  pane.querySelector("#note").oninput = e => { W.notes[c.id] = e.target.value; save(); };
+}
+
+function decide() {
+  const lvl = (t, c) => LVL[c + ":" + get(t, c)];
+  const issues = t => CHECKS.filter(c => lvl(t, c.id) === "bad").map(c => LABEL[c.id + ":" + get(t, c.id)].toLowerCase());
+  const looksBad = t => CHECKS.filter(c => c.id !== "bond" && lvl(t, c.id) === "bad").map(c => LABEL[c.id + ":" + get(t, c.id)].toLowerCase());
+  const solid = t => lvl(t, "bond") === "good";
+  const weak = TEMPS.filter(t => get(t, "bond") && !solid(t));
+  // a weak block hotter than a solid one means the snap test measured seams or handling, not temperature
+  const noisy = weak.some(w => TEMPS.some(g => g < w && solid(g)));
+  const run = ok => { let best = [], cur = []; TEMPS.forEach(t => { if (ok(t)) { cur.push(t); if (cur.length > best.length) best = cur.slice(); } else cur = []; }); return best; };
+  let pass, best, pick = null, rule = "";
+  if (!noisy) {
+    pass = t => solid(t) && !issues(t).length;
+    best = run(pass);
+    const maxWeak = weak.length ? Math.max(...weak) : null;
+    if (best.length) {
+      const lo = best[0], hi = best[best.length - 1];
+      if (hi === TEMPS[TEMPS.length - 1] && best.length > 1) { pick = lo + 5; rule = "no upper limit found, so floor + 5"; }
+      else { pick = best[Math.floor(best.length / 2)]; rule = "upper middle of the passing band"; }
+      if (maxWeak !== null && pick < maxWeak + 10 && hi >= maxWeak + 10) { pick = maxWeak + 10; rule += `, raised to keep 10 C above the ${maxWeak} weak bond`; }
+    } else {
+      const ok = TEMPS.filter(t => solid(t) && (maxWeak === null || t > maxWeak));
+      if (ok.length) { pick = ok.includes(ok[0] + 5) ? ok[0] + 5 : ok[0]; rule = "no block passes everything: bond floor (+5 if possible), fix the rest with retraction / cooling"; }
+    }
+  } else {
+    // judge on looks; use the snap test only to choose inside the looks band
+    pass = t => CHECKS.some(c => c.id !== "bond" && get(t, c.id)) && !looksBad(t).length;
+    best = run(pass);
+    if (best.length) {
+      const mid = best[Math.floor(best.length / 2)];
+      const cands = best.filter(solid).length ? best.filter(solid) : best;
+      pick = cands.reduce((a, t) => Math.abs(t - mid) < Math.abs(a - mid) ? t : a);
+      rule = "snap test inconsistent (weak blocks above solid ones, so it measured seams or handling, not temperature): " +
+        `picked on looks, the block nearest the middle of the ${best[0]}-${best[best.length - 1]} looks band` + (best.some(solid) ? " that also held solid" : "");
+    }
+  }
+  const why = t => {
+    if (noisy) return looksBad(t).join(", ") || (pass(t) ? "" : "not scored");
+    if (!get(t, "bond")) return "bond not tested";
+    if (!solid(t)) return LABEL["bond:" + get(t, "bond")].toLowerCase();
+    return issues(t).join(", ");
+  };
+  return { best, pick, rule, pass, why, issues, noisy };
+}
+
+function drawResult() {
+  const answered = TEMPS.filter(t => get(t, "bond")).length;
+  const d = decide();
+  const pick = W.pick && d.best.includes(W.pick) ? W.pick : d.pick;
+  const cur = parseInt(W.cur, 10) || null;
+  const band = d.best.length ? `${d.best[0]}-${d.best[d.best.length - 1]} C` : "none";
+  let head;
+  if (answered < 3) head = `<p class="big">Not enough readings</p><p>Do the snap test (step 1) on at least 3 blocks.</p>`;
+  else if (pick === null) head = `<p class="big" style="color:var(--bad)">No usable block</p><p>No block held in the snap test. Check the tower was fully cold, then re-test or print a hotter tower.</p>`;
+  else head = `<p class="small">Decision</p><p class="big">Print at ${pick} &deg;C</p><p>Passing band <b>${band}</b> (${d.rule}).` +
+    (cur ? ` Current temp: <b>${cur}</b>${cur === pick ? " (no change)" : ""}.` : "") + `</p>`;
+  const mini = TEMPS.map(t => `<span class="b ${d.pass(t) ? "pass" : "fail"} ${t === pick ? "pick" : ""}">${t}</span><span class="why">${d.pass(t) ? "passes" : d.why(t)}</span>`).join("");
+  const choose = d.best.length > 1 ? `<p class="small">Prefer another temp in the band? <select id="ov">${d.best.map(t => `<option ${t === pick ? "selected" : ""}>${t}</option>`).join("")}</select></p>` : "";
+  pane.innerHTML = `<div class="grid2"><div>${head}${choose}</div><div class="mini">${mini}</div></div>
+    <h3 style="margin-top:16px">Summary</h3>
+    <textarea id="out" rows="16" readonly>${buildPrompt(d, pick, band)}</textarea>
+    <p><button class="btn" id="copy">Copy summary</button> <span id="copied" class="small"></span></p>`;
+  const ov = pane.querySelector("#ov"); if (ov) ov.onchange = e => { W.pick = +e.target.value; save(); drawResult(); };
+  pane.querySelector("#copy").onclick = async () => {
+    const ta = pane.querySelector("#out");
+    try { await navigator.clipboard.writeText(ta.value); } catch (_) { ta.select(); document.execCommand("copy"); }
+    pane.querySelector("#copied").textContent = "Copied.";
+  };
+}
+
+function buildPrompt(d, pick, band) {
+  const hot = TEMPS[TEMPS.length - 1], cold = TEMPS[0];
+  const today = new Date().toISOString().slice(0, 10);
+  const cell = (t, c) => get(t, c) ? LABEL[c + ":" + get(t, c)].toLowerCase() : "-";
+  const lines = TEMPS.map(t => `${t}: ${CHECKS.map(c => cell(t, c.id)).join(" | ")}${d.pass(t) ? "  [pass]" : ""}`);
+  const notes = CHECKS.filter(c => (W.notes[c.id] || "").trim()).map(c => `- ${c.short}: ${W.notes[c.id].trim()}`);
+  const out = [
+    `Temperature tower result, read ${today}.`,
+    `Filament: ${W.fil || "(not named)"}${W.colour ? ", colour " + W.colour : ""}.`,
+    `Tower: CC2 0.4 nozzle, ${hot} C bottom to ${cold} C top, 5 C steps.`,
+    ``,
+    `Readings per block (${CHECKS.map(c => c.short).join(" | ")}):`,
+    ...lines,
+    ...(notes.length ? [``, `Notes:`, ...notes] : []),
+    ``,
+    pick === null ? `Decision: none, no block passed. Re-test cold, or print a hotter tower.` :
+      `Decision: passing band ${band}, pick ${pick} C (${d.rule}).`,
+  ];
+  return out.join("\n");
+}
+draw();
+
+// example tower diagram
+(function () {
+  const g = document.getElementById("tw");
+  const status = {190:"bad",195:"bad",200:"ok",205:"good",210:"good",215:"good",220:"good",225:"hot",230:"hot"};
+  const col = {bad:"#f9e3e0", ok:"#fbf0dc", good:"#e5f4e9", hot:"#fde9e0"};
+  const txt = {bad:"snaps", ok:"creaks", good:"passes", hot:"strings"};
+  EX_TEMPS.forEach((t, i) => {
+    const y = 10 + i * 34; // 190 at top
+    const s = status[t];
+    g.insertAdjacentHTML("beforeend",
+      `<rect x="20" y="${y}" width="170" height="30" rx="4" fill="${col[s]}" stroke="#6f6a60"/>` +
+      `<text x="105" y="${y + 20}" text-anchor="middle" font-weight="700">${t}</text>` +
+      `<text x="205" y="${y + 20}" fill="${s === "good" ? "#2f8f4e" : s === "ok" ? "#b7791f" : s === "hot" ? "#d9480f" : "#c0392b"}">${txt[s]}</text>`);
+  });
+  // bracket + pick (passing 205-220, pick 215)
+  const yTop = 10 + 3 * 34, yBot = 10 + 6 * 34 + 30;
+  g.insertAdjacentHTML("beforeend",
+    `<path d="M300 ${yTop} h10 V${yBot} h-10" fill="none" stroke="#2f8f4e" stroke-width="2"/>` +
+    `<text x="318" y="${yTop + 14}" fill="#2f8f4e" font-weight="700">pass band</text>` +
+    `<text x="318" y="${yTop + 30}" fill="#2f8f4e">205-220</text>` +
+    `<rect x="16" y="${10 + 5 * 34 - 3}" width="178" height="36" rx="6" fill="none" stroke="#d4a017" stroke-width="3"/>` +
+    `<text x="318" y="${10 + 5 * 34 + 14}" fill="#b7791f" font-weight="700">pick 215</text>` +
+    `<text x="318" y="${10 + 5 * 34 + 30}" fill="#5b6470" font-size="12">upper middle</text>` +
+    `<text x="20" y="${10 + 9 * 34 + 14}" fill="#5b6470" font-size="12">top printed last (coldest), bottom first (hottest)</text>`);
+})();
+</script>
+</body>
+</html>
