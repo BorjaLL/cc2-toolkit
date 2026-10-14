@@ -4,8 +4,8 @@ One file per filament **brand + type** (not per colour of the same line), named
 `<slug>.md`:
 
 - **Frontmatter** = the numbers (base preset, slicer key, temp, flow,
-  retraction, tolerance, preset JSON path). No slot field: slots are state, and
-  live only in the table below.
+  retraction, tolerance, preset JSON path). No slot field: which spool sits in
+  which CANVAS slot is your printer's state, not a filament fact.
 - **Body** = a dated log of calibration runs and what was picked and why.
 - **`presets/<slug>.json`** = the exported ElegooSlicer user preset, same slug.
 
@@ -15,23 +15,20 @@ frontmatter and pass the values explicitly:
 
 How to calibrate a new filament: `calibration/README.md`.
 
-## CANVAS slots (current state)
+## Records
 
-This is the **only** place slots are recorded. Updated: **2026-09-23**.
+| Filament | Base preset | Temp | Flow | Retraction | Fit (per side) |
+|---|---|---|---|---|---|
+| [Elegoo PLA RFID "emoji" (white)](elegoo-pla-emoji.md) | `Elegoo PLA @ECC2` | 210 | 1.00 | 0.8 | 0.2 |
+| [White PLA (plain Elegoo)](white-pla.md) | `Elegoo PLA @ECC2` | 210 | 1.00 | 0.8 | inherited from emoji |
+| [Elegoo PLA Matte](elegoo-pla-matte.md) | `Elegoo PLA Matte @ECC2` | 215 | 0.98 | 0.8 | 0.1 |
+| [Elegoo PLA+ black](elegoo-pla-plus-black.md) | `Elegoo PLA+ @ECC2` | 210 | 0.98 | 0.8 | passed, no compensation |
+| [DEEPLEE PLA+ 2.0](deeplee-pla-plus-2.md) | `Elegoo PLA+ @ECC2` | 220 | 1.00 | 0.8 | 0.2 |
+| [SUNLU PLA+](sunlu-pla-plus.md) | `Elegoo PLA+ @ECC2` | 215 | 0.98 | 0.8 | 0.25 (hinge test) |
+| [Elegoo PLA-CF black](elegoo-pla-cf-black.md) | `Elegoo PLA-CF @ECC2` | | | | not calibrated |
 
-| Slot | Filament | Source |
-|---|---|---|
-| 1 (T0, per temp tower gcode) | [Elegoo PLA RFID emoji edition (white)](elegoo-pla-emoji.md) | owner, 2026-09-23 |
-| 2 | [Elegoo PLA, plain white](white-pla.md) | owner, 2026-09-23 |
-| 3 | empty | owner, 2026-09-23 |
-| 4 | [Elegoo PLA+ black](elegoo-pla-plus-black.md) | owner, 2026-09-23 |
-
-## Stock
-
-| Qty | Filament | Source | Record |
-|---|---|---|---|
-| ~2 kg total | White PLA, all white incl. slot 1 (emoji white) + slot 2 (plain white); spares brand unknown | owner, 2026-09-26 (was listed as 3 rolls: 2 gifted + 1 prior) | [white-pla.md](white-pla.md) |
-| 1 | Elegoo PLA-CF black | free promo roll | [elegoo-pla-cf-black.md](elegoo-pla-cf-black.md) |
-| in the ~2 kg white above | Elegoo PLA RFID "emoji" edition (white, slot 1) | owner, 2026-09-26 | [elegoo-pla-emoji.md](elegoo-pla-emoji.md) |
-| 1 | Elegoo PLA+ black | bought for a puzzle project | [elegoo-pla-plus-black.md](elegoo-pla-plus-black.md) |
-
+On four of these (PLA Matte, PLA+ black, DEEPLEE, SUNLU) the retraction
+tests strung only at 0.0 mm or not at all, so the stock 0.8 mm needed no
+change for PLA-family filament on the CC2. Fit numbers come from
+different tests (rail thickness, hinge) and are one printer's results:
+measure your own.

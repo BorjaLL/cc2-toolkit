@@ -7,15 +7,14 @@ user_preset: Elegoo PLA+ (calibrated)
 preset_json:               # export after Step 3
 temp: 210
 flow: 0.98                 # stock 0.98, kept (YOLO patch 0)
-retraction_mm:             # Step 3 pending
+retraction_mm: 0.8         # stock 0.8, kept (tower 2026-10-11)
 tolerance_free_at_mm:  ok  # Step 4 passed 2026-09-23, no XY compensation needed
 ---
 
 # Elegoo PLA+ black
 
-Bought for a sliding-fit puzzle (a toy train, the Coal Train). Calibration in
-progress: temp + flow done, retraction / tolerance still to run (see
-`calibration/README.md`).
+Bought for a sliding-fit puzzle. Calibrated: temp, flow, retraction and
+tolerance done (see `calibration/README.md`). Bed stays at the stock 55 C.
 
 Slice with:
 `python tools/slice_cc2.py model.stl --filament plaplus --temp 210 --flow 0.98`
@@ -35,6 +34,10 @@ Slice with:
 - 2026-09-23 flow YOLO (Recommended, an Orca flow-test option) at 210C: smoothest patch was 0, so flow
   stayed at the stock 0.98 (no adjustment needed). Flow did not move, but
   Step 4 (tolerance) is still needed per the run-book because the puzzle
-  is fit-critical: tolerance stays pending.
+  is fit-critical.
 - 2026-09-23 tolerance test (Step 4): owner reports OK, so XY contour/hole
   compensation stays 0. The puzzle's black plates were sliced with these settings.
+- 2026-10-11 retraction tower 0.0-1.2 mm: no stringing at any length, even the
+  lowest. Stock 0.8 kept. The bed stays at the stock 55 C (a raised bed did not
+  fix a first-layer problem that turned out to be the hotend, see
+  `guides/gotchas.md` "Hotend and first layer").

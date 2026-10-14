@@ -1,7 +1,8 @@
 # Worked example: CC2 on a floor slab, stock soft feet
 
 Historical (2026-09-29): the author's setup has changed since (rigid feet, then the slab on
-tennis balls); the numbers below describe that day only.
+tennis balls); the numbers below describe that day only. What changed after:
+"Update 2026-10" at the end.
 
 One printer, one setup, one date. Your numbers will differ: use
 `guides/find-your-numbers.md` to get yours. These are here to show what the
@@ -69,7 +70,20 @@ Cost, same part, from the slicer's time estimate:
 In the G-code it cut Y direction reversals by 17% and saved 4% time.
 **(Untested on a print)**: that is a G-code count, not a measurement.
 
-## Next on this printer
+## Update 2026-10
 
-Rigid feet (see `guides/rigid-feet.md`), then recalibrate. If Y rises, the
-cap can go back up.
+- **2026-09-30 rigid feet** (`guides/rigid-feet.md`), shaper recalibrated:
+  X zv 52.0 Hz (suggested 9700), Y zv 44.8 Hz (suggested 6800). Frequencies
+  barely moved; Y switched from mzv to zv. The sway mode moved from about
+  6.5 Hz to about 19 Hz.
+- Then the slab went onto a soft layer to cut floor hum, which brought a slow
+  sway back (5-7 Hz, see `guides/tuning.md` "Hardware / one-time").
+- **2026-10-05 accel towers** on that stack: walls clean at every band from 5000
+  to 20000 (the printer's limit, so a lower bound, not a ceiling); a tower with
+  infill at 20000 rocked with no ringing or layer shift. The cap went to 20000
+  on that print evidence, not on the shaper estimate.
+- Shaper re-runs: 2026-10-01 on the soft layer X mzv 52.8 / Y zv 44.0 Hz;
+  2026-10-13 X zv 52.0 / Y zv 44.8 Hz, the same as on 2026-09-30. Stable
+  within 0.8 Hz.
+
+Untested at 20000: first layer, top surfaces, bridges.

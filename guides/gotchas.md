@@ -34,6 +34,11 @@ first two items are corrections to advice I found elsewhere.
    elsewhere: `tools/send_cc2.py` refuses files with `M600` before upload and
    before every `--start` (it reads the printer file back). A plain
    `grep -c '^M600'` misses `M600 ; comment` style lines; the tools do not.
+   For a planned CANVAS colour swap, use a ToolChange (type 2) in the 3MF's
+   `custom_gcode_per_layer.xml`, not `M600`. With CANVAS auto refill on
+   (Settings > CANVAS Options, present on 01.03.02.36) and the same filament in
+   two slots, a runout should continue from the second slot (available; a real
+   runout not yet tested).
 5. **Designer 3MF settings are replaced, per-object ones are kept.**
    `--load-settings` swaps in the CC2 process, so the 3MF's own process values
    (layer height, infill, ...) are dropped. Keys the tool leaves unset fall back
@@ -106,17 +111,57 @@ first two items are corrections to advice I found elsewhere.
     toolkit 1.2.0 `slice_cc2.py` exits with small stable codes (4 = slicer failed,
     see `tools/README.md`) and stores the slicer's own code in
     `slice_result.json` (`slicer_exit_signed`); the `exit N` line still shows it.
+12. **CLI slices have no preview image.** If you add one, keep the PNG size a
+    multiple of 3 bytes: the CC2 silently drops a thumbnail whose base64 ends in
+    `=` padding (the largest that worked was about 10000 base64 characters).
+13. **Ironing written as `nan`.** On one two-part object ElegooSlicer wrote the
+    ironing pass with `WIDTH nan` and an E value of about -9.2e13. Search the
+    G-code for `nan` before printing anything ironed (2026-10).
+14. **Support gap rounds to layers.** At 0.2 mm layers,
+    `support_top_z_distance = 0.3` printed as a 0.4 mm gap.
 
 ## Printer
 
-12. **Never `strace -f` the GUI** (froze the touchscreen at print start, power
+15. **Never `strace -f` the GUI** (froze the touchscreen at print start, power
     cycle needed, 2026-09-29). See `firmware-and-ssh.md`.
-13. **Cracked base panel, exposed CANVAS spools, thin ecosystem** were the risks
+16. **Cracked base panel, exposed CANVAS spools, thin ecosystem** were the risks
     I accepted at purchase; a small number of anecdotal cracked-panel reports, no
     recall, Elegoo replaces case by case. CANVAS spools hang exposed on the side
     and take up moisture in use.
-14. **CC1 parts do not fit the CC2.** The "Multi-Size Hotend Kit for Centauri
+17. **CC1 parts do not fit the CC2.** The "Multi-Size Hotend Kit for Centauri
     **Series**" fits the CC2; the "Assembled Extruder Hotend Kit for Centauri
     **Carbon**" is the CC1's. The product pages have a Compatibility tab that
     is collapsed by default and renders as empty text: expand it in a browser,
     do not trust the product name.
+18. **Reboot only with the nozzle below about 50 C.** The hotend fan does not
+    run during boot; two reboots soon after a print were each followed by a
+    partial clog (suspected heat creep). See `firmware-and-ssh.md`.
+19. **Files sent over SFTP look broken in the phone app** (0 layers, about
+    1 min, no thumbnail) until the next boot; the touchscreen is fine. Reboot
+    when idle and cool, or give a re-sent file a new name. See
+    `firmware-and-ssh.md`.
+20. **Seen and harmless so far:** thousands of `tmc_uart _decode_read` errors
+    in the log (suspect them if layers shift); a single chamber reading jumping
+    about 12 C for 10 s, which sends the cavity fan to 100% briefly (a sensor
+    spike); one retried `LOAD_CELL_ERROR_TIMEOUT` (803) during levelling. Stock
+    log timestamps are China time.
+
+## Hotend and first layer
+
+21. **Bumps, blobs and brown flecks on the first layer: look under the silicone
+    sock first** (2026-10-12). On the author's printer plastic was weeping from
+    the nozzle / heater-block joint and had built a burnt crust on the block.
+    Every stop wetted the line and brown bits dropped onto the part. Slicer
+    changes, bed temperature, speed and a fresh mesh did not help. Fix: heat to
+    printing temperature, brass-brush the block and tip, check the nozzle is
+    snug, and replace the nozzle if it keeps weeping. Re-run the full
+    on-printer calibration after a nozzle swap.
+22. **Caliper a new brand's filament.** One budget PLA roll measured
+    1.70-1.82 mm (spec 1.75 +/- 0.02). That is up to about 8% more plastic per
+    mm than nominal and a 15% swing along the roll, and it gave blobs, ooze and
+    patchy adhesion; another roll ran the same file cleanly. Out-of-spec rolls may also leave residue on the hotend
+    (suspected).
+23. **First part on the plate blotchy: purge ooze** (2026-10-09). The CC2 start
+    G-code draws a purge line at the front and then travels straight to the
+    first part. With no skirt, the nozzle arrived still oozing. A 2-loop skirt
+    3 mm out catches it.
