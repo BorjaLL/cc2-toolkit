@@ -14,11 +14,13 @@
   - `calibration/flow/Orca-LinearFlow_bed.stl` (the YOLO flow test)
   - `calibration/card/card_v3_*.stl` (the v3 card's flow patches and
     retraction tower, from Orca's YOLO and `retraction_tower.drc` models)
-  - `calibration/mvs/orca_speed_test_structure.stl` (from
-    `resources/calib/volumetric_speed/SpeedTestStructure.drc`)
+  - the max volumetric speed tower mesh `calibration/mvs/` cuts from
+    `resources/calib/volumetric_speed/SpeedTestStructure.drc`
 
-  The generators (`build_tower.py`, `calibration/flow/`, `build_card_v3.py`,
-  `calibration/mvs/`) rebuild them from your own ElegooSlicer install.
+  Only the 230-190 C tower STL is committed; the generators (`build_tower.py`,
+  `calibration/flow/`, `build_card_v3.py`, `calibration/mvs/`) build the rest
+  from your own ElegooSlicer install. G-code sliced from any of them is
+  AGPL-3.0 too.
 - **Slicer profiles**: `slice_cc2.py` and the calibration scripts read the stock
   Elegoo profiles from your ElegooSlicer install at run time; flattened copies
   under `calibration/temperature/profiles/` and `calibration/flow/profiles/`
