@@ -13,7 +13,7 @@ Usage:
                         [--filament pla|plaplus|plapro|plamatte|petghf|asa|abs]
                         [--layer 0.20|0.12] [--accel capped|antiwobble|night|night2|night3|balanced|stock]
                         [--temp C] [--flow RATIO] [--bed C] [--pure-stock]
-                        [--adaptive [QUALITY]] [--adaptive-smooth RADIUS]
+                        [--adaptive [QUALITY]] [--adaptive-smooth RADIUS] [--thumbnail]
 
 Calibrated values live in filaments/<slug>.md frontmatter (this script does not
 read them; pass them explicitly). Example, emoji PLA:
@@ -543,6 +543,10 @@ def main(argv=None, hooks=None):
     ap.add_argument("--adaptive-smooth", type=int, default=0, metavar="RADIUS",
                     help="with --adaptive: smooth the profile like the GUI Smooth button "
                          "(radius in layers, GUI default 5); 0 = off (default)")
+    ap.add_argument("--thumbnail", action="store_true",
+                    help="add the preview picture the CC2 shows in its file list (CLI slices "
+                         "have none): rendered from the toolpaths by thumbnail.py. Needs "
+                         "Pillow (pip install pillow)")
     ap.add_argument("--send", nargs="?", const="", metavar="NAME",
                     help="upload the G-code to the printer over SSH (send_cc2.py) after "
                          "slicing. Optional NAME for the file on the printer; default is "
@@ -597,6 +601,8 @@ def main(argv=None, hooks=None):
         ap.error("--adaptive-smooth must be >= 0")
     if not 1 <= a.slots <= 4:
         sys.exit(f"--slots {a.slots}: must be 1..4 (the CANVAS has 4 slots)")
+    if a.thumbnail and not a.dry_run and not _sibling("thumbnail").have_pillow():
+        sys.exit("--thumbnail: " + _sibling("thumbnail").PILLOW_HINT)
     if _hook(hooks, "prepare"):
         hooks.prepare(a)
     if a.out is None:
@@ -793,6 +799,14 @@ def main(argv=None, hooks=None):
         with open(g, "w", encoding="utf-8", newline="") as f:
             f.writelines(lines)
         print(f"{os.path.basename(g)}: stripped {n} M600 pause(s)")
+    if a.thumbnail:
+        thumb = _sibling("thumbnail")
+        for g in gcodes:
+            try:
+                thumb.add(g)
+                print(f"{os.path.basename(g)}: preview added")
+            except ValueError as e:  # e.g. no printed toolpaths: keep the G-code, say so
+                print(f"WARNING {os.path.basename(g)}: no preview ({e})")
     plates = [(g, os.path.splitext(os.path.basename(g))[0]) for g in gcodes]  # (file, "plate_1")
     for g, plate in plates:
         result["outputs"].append({"plate": plate, "path": g, "m600_stripped": stripped.get(os.path.basename(g), 0)})
@@ -877,7 +891,7 @@ def new_result(a, log):
             "settings": {k: getattr(a, k, None) for k in (
                 "filament", "layer", "accel", "pure_stock", "temp", "flow", "bed", "auxfan",
                 "slots", "slot_filament", "plate", "proc", "fil", "keep_pauses", "adaptive",
-                "adaptive_smooth")},
+                "adaptive_smooth", "thumbnail")},
             "outputs": [], "stale_in_out": [], "checks": a.checks, "diagnostics": [],
             "sent": False, "wrapper": getattr(a, "result_extra", None)}
 

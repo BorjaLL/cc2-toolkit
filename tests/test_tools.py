@@ -352,6 +352,110 @@ class TestAdaptive(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
 
+def png_bytes(extra=b""):
+    """Minimal valid 1x1 RGBA PNG, built by hand (no Pillow); extra = tEXt payload to
+    vary the length."""
+    import struct, zlib
+
+    def chunk(kind, data):
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff))
+    out = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
+    if extra:
+        out += chunk(b"tEXt", b"k\x00" + extra)
+    return out + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00\xff")) + chunk(b"IEND", b"")
+
+
+def png_chunks(data):
+    """[(type, ok crc)] of a PNG."""
+    import struct, zlib
+    i, out = 8, []
+    while i < len(data):
+        n, = struct.unpack(">I", data[i:i + 4])
+        kind, body = data[i + 4:i + 8], data[i + 8:i + 8 + n]
+        crc, = struct.unpack(">I", data[i + 8 + n:i + 12 + n])
+        out.append((kind, crc == zlib.crc32(kind + body) & 0xffffffff))
+        i += 12 + n
+    return out
+
+
+GCODE_HEAD = ("; HEADER_BLOCK_START\n; estimated printing time = 1m\n; HEADER_BLOCK_END\n\n"
+              "G28\nM83\n;TYPE:Custom\nG1 X0 Y0 E5\n")
+
+
+def square_gcode(layers=5):
+    """A small hollow square tower as sliced G-code (relative E)."""
+    body = []
+    for n in range(1, layers + 1):
+        body += [f"G1 Z{0.2 * n:.1f}", ";TYPE:Outer wall", "G1 X10 Y10",
+                 "G1 X30 Y10 E1", "G1 X30 Y30 E1", "G1 X10 Y30 E1", "G1 X10 Y10 E1"]
+    return GCODE_HEAD + "\n".join(body) + "\n; filament_colour = #20A0FF\n"
+
+
+class TestThumbnail(unittest.TestCase):
+    th = load("thumbnail")
+
+    def test_pad3_removes_base64_padding(self):
+        import base64
+        lens = set()
+        for k in range(6):
+            png = png_bytes(b"x" * k)
+            lens.add(len(png) % 3)
+            out = self.th.pad3(png)
+            self.assertEqual(len(out) % 3, 0)
+            self.assertFalse(base64.b64encode(out).endswith(b"="))
+            self.assertTrue(out.startswith(png[:-12]) and out.endswith(png[-12:]))  # IEND last
+            chunks = png_chunks(out)
+            self.assertEqual(chunks[-1][0], b"IEND")
+            self.assertTrue(all(ok for _, ok in chunks))
+        self.assertEqual(lens, {0, 1, 2})  # every remainder was exercised
+
+    def test_toolpaths_skip_custom_and_travel(self):
+        segs = self.th.toolpaths(square_gcode(2).splitlines())
+        self.assertEqual(len(segs), 8)                      # 4 walls x 2 layers, no purge line
+        self.assertEqual(self.th.colour(square_gcode().splitlines()), (0x20, 0xA0, 0xFF))
+
+    @unittest.skipUnless(load("thumbnail").have_pillow(), "Pillow not installed")
+    def test_add_inserts_unpadded_block_once(self):
+        import base64
+        d = tempfile.mkdtemp()
+        try:
+            p = os.path.join(d, "t.gcode")
+            write(p, square_gcode().encode())
+            self.assertTrue(self.th.add(p))
+            lines = read(p).splitlines()
+            self.assertEqual(lines[2], "; HEADER_BLOCK_END")  # block right after the header
+            s = lines.index("; THUMBNAIL_BLOCK_START")
+            e = lines.index("; THUMBNAIL_BLOCK_END")
+            begin = [l for l in lines[s:e] if l.startswith("; thumbnail begin ")][0]
+            b64 = "".join(l[2:] for l in lines[s:e]
+                          if l.startswith("; ") and not l.startswith(("; thumbnail", "; THUMB")))
+            self.assertEqual(begin.split()[3:], ["144x144", str(len(b64))])
+            self.assertFalse(b64.endswith("="))
+            self.assertLessEqual(len(b64), self.th.B64_LIMIT)
+            self.assertTrue(base64.b64decode(b64).startswith(b"\x89PNG"))
+            self.assertFalse(self.th.add(p))                  # idempotent
+            self.assertTrue(self.th.add(p, force=True))       # replaced, not duplicated
+            self.assertEqual(read(p).count("; THUMBNAIL_BLOCK_START"), 1)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    @unittest.skipUnless(load("thumbnail").have_pillow(), "Pillow not installed")
+    def test_slice_thumbnail_flag(self):
+        d = tempfile.mkdtemp()
+        try:
+            out, model = os.path.join(d, "out"), os.path.join(d, "m.stl")
+            write(model, b"")
+            with FakeSlicer(d, body=square_gcode()):
+                self.assertEqual(run_main([model, "--out", out, "--thumbnail"]), sc.EXIT_OK)
+            self.assertIn("; THUMBNAIL_BLOCK_START", read(os.path.join(out, "plate_1.gcode")))
+            with FakeSlicer(d + "/plain", body=square_gcode()):
+                run_main([model, "--out", out + "2"])          # off by default
+            self.assertNotIn("THUMBNAIL", read(os.path.join(out + "2", "plate_1.gcode")))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 class TestNightProfile(unittest.TestCase):
     def test_night3_out_of_the_authors_ringing_band(self):
         n3 = sc.ACCEL["night3"]
@@ -363,7 +467,7 @@ class TestNightProfile(unittest.TestCase):
 
 class TestApi(unittest.TestCase):
     def test_all_names_exist(self):
-        for m in (sc, snd):
+        for m in (sc, snd, load("thumbnail")):
             for k in m.__all__:
                 self.assertTrue(hasattr(m, k), f"{m.__name__}.{k}")
         self.assertEqual(sc.API_VERSION, gc.API_VERSION)
