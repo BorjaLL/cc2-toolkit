@@ -1,5 +1,45 @@
 # CC2 calibration card (one print: flow, retraction, tolerance, temp bracket)
 
+## Read first (2026-10-14): use v3, do not trust v1 flow or temperature
+
+Printed since this was written: v1 and v2.x on PLA Matte, v3 on three
+filaments. What came out of it:
+
+- **v1 (and v2-v2.2) flow pads gave no flow answer** in four versions. The
+  stock process prints top surfaces at `top_solid_infill_flow_ratio = 1.09`
+  (pad tops measured 1.077x their own solid layers), so every pad sat
+  over-extruded and the pads looked alike. The "clear winner" reading in the
+  v1 table below is wrong.
+- **The v1 4 mm temperature bands were too small to judge.** Pick the
+  temperature with the full tower (`calibration/temperature/`).
+- The v1 hollow posts and the small loose hex tester can come off the bed.
+
+**v3** (`build_card_v3.py`): three separate parts printed one after the other,
+each finished before the next starts, 75 mm apart (head rule 65):
+
+1. **Flow**: 5 of Orca's own YOLO patches (30 x 30 mm, labels -0.04 to +0.04),
+   Orca's YOLO top settings (top flow ratio 1). New flow = base + label of the
+   smoothest patch. For the full 11-patch test use `calibration/flow/`.
+2. **Fit**: a 4 mm rail (feels like a real part; the v1 2.4 mm rail reads one
+   step loose), holes labelled 0-40 (mm per side x 100), hex tester.
+3. **Retraction**: Orca's own retraction tower, 0.0-1.2 mm, length =
+   0.1 x floor(z - 0.4). Count the grooves from the bed up to the first section
+   where the gap between the pillars is clean: retraction = 0.1 x that count.
+   Below the first groove = 0.0, expected to string (the control).
+
+```bash
+python calibration/card/build_card_v3.py --filament plamatte --temp 215 --flow 0.98 --tag PLAMATTE
+python calibration/card/build_card_v3.py ... --no-flow           # fit + retraction only (~18 min)
+python calibration/card/build_card_v3.py ... --retraction-only   # the tower alone
+```
+
+Printed on DEEPLEE PLA+ 2.0 (full card, 30 min) and SUNLU PLA+ (`--no-flow`):
+results in `filaments/`. For fit, the print-in-place hinge test in
+`calibration/README.md` Step 4 is now preferred; the loose tester came off the
+bed once on v3 too.
+
+Everything below describes **v1** (kept for the v1 files in this folder).
+
 One small plate instead of the four prints in `calibration/README.md` (temp
 tower 55 min + flow YOLO 20 + retraction 20 + tolerance 12 = ~1.75 h). It is a
 **bracket check around values you already roughly know** (stock preset or a
@@ -24,8 +64,7 @@ one glance per row.
   7 mm tall). Use it when the temperature is already settled and you only want
   flow / retraction / fit.
 
-Both select **CANVAS slot 1 (`T0`)**: put the filament under test in slot 1
-(current slots: `filaments/README.md`). Centauri Carbon 2, 0.4 mm nozzle,
+Both select **CANVAS slot 1 (`T0`)**: put the filament under test in slot 1. Centauri Carbon 2, 0.4 mm nozzle,
 **textured PEI**, door as usual (shut is fine for PLA), 100% speed, no brim, no ironing. Print
 conditions are otherwise the author's normal ones (`tools/slice_cc2.py`
 with `--accel antiwobble`, stock 0.20 mm process; the checked-in G-code was sliced that way), so the answers apply to real prints. One
@@ -34,7 +73,7 @@ deliberate exception: the minimum layer time is **8 s** instead of the stock
 layers (it costs +4 min 40 s on the full card, +8 s on the flat one).
 
 Generated with ElegooSlicer 1.5.3.5 through `tools/slice_cc2.py`,
-2026-09-27. **Checked in G-code only, not yet printed** (see the end).
+2026-09-27. Printed since; see "Read first" at the top.
 
 ## Read it (front of the printer = bottom of the map)
 
@@ -67,7 +106,7 @@ frontmatter of `filaments/<slug>.md` with a dated log line.
 
 | Test | On the card | Trust | Why |
 |---|---|---|---|
-| Flow | 7 isolated pads, E-scaled per pad in post-processing | **coarse screening**, +-0.03 in 0.01 steps: the same E-multiplier mechanism as the slicer's per-object flow ratio, but small monotonic 12 x 12 mm pads, not the YOLO test's surface geometry | flow ratio *is* an E multiplier, so each pad is printed at the flow it says; what differs is what you judge it on (a flat top only). A clear winner is a fair 0.01-step answer. Confirm a close or ambiguous pick (two neighbours you cannot separate) with Orca's YOLO flow test. |
+| Flow | 7 isolated pads, E-scaled per pad in post-processing | **coarse screening**, +-0.03 in 0.01 steps: the same E-multiplier mechanism as the slicer's per-object flow ratio, but small monotonic 12 x 12 mm pads, not the YOLO test's surface geometry | flow ratio *is* an E multiplier, so each pad is printed at the flow it says; what differs is what you judge it on (a flat top only). **In practice it gave no answer** (see "Read first": the stock 1.09 top-surface flow over-extrudes every pad). Use Orca's YOLO flow test or v3. |
 | Retraction | 5 pairs, every retraction that starts inside a pair is rewritten to that pair's length (retract, wipe and unretract, re-balanced) | **same mechanism as the retraction tower**, 21-23 direct post-to-post travels per value (the retraction tower gives 5 per 0.1 mm step) but only 5 values | retraction length is an E value in the G-code on the CC2 (no firmware retraction); speed, wipe and z-hop stay stock. Strings that cross between pairs belong to the pair the nozzle *left*; that is why you only read between a pair's own posts. |
 | Tolerance | pure geometry, printed at the card's base flow | **same as the Orca tolerance test**, rail 2.4 mm thick (theirs is thicker, so the fit feel is a little shorter) | nothing is varied; if flow moves by more than 0.02, reprint (the holes shrink with flow). |
 | Temperature | 5 bands x 4 mm on a **separate object printed after the card, alone**; `M109` (wait) at the first layer of every band | **a bracket, not a tower**: +-10 C in 5 C steps. Read it as "keep / go one step hotter / colder / off the scale" | the digits are **reached** temperatures: before the first layer of each band the nozzle lifts 2 mm, parks beside the tower and waits (`M109`) until the hotend is there, so the whole band prints at its number (the slicer's own tower uses `M104`, no wait, and drifts). Cost: a small string dragged in from the park point where each band starts, so ignore its first 2-3 layers and judge the chin (starts 7 layers in) and the bridge (at the top). The card itself never sees a temperature change: it is finished before the tower begins. 4 mm bands are still shorter than the tower's 10 mm. No per-island temperature switching: a nozzle cannot settle in the seconds an island takes, so that would be a fake test. For an unknown material, run the full 230-190 tower first. |
@@ -169,7 +208,9 @@ stock preset for a new spool). Labels, bands and pads follow them. The ranges
 - `CC2_CalibCard_PLA_T210_F98.gcode`, `CC2_CalibCardFlat_PLA_T210_F98.gcode` - ready to print
 - `verification.json`, `verification_flat.json` - what was checked
 
-**Not yet physically printed.** First print to watch for: the loose tester
+**v1 status:** printed on PLA Matte 2026-09-30: no usable flow or temperature
+answer, retraction all clean (0.4-1.2, no 0.0 control). Original notes on what
+to watch for: the loose tester
 staying put (small island, no brim), the 0.84 mm tube walls of the posts, and
 whether 12 mm pads are big enough to judge. Sequential-print specifics: the
 head crossing to the tower after the card (the nozzle passes 0.8 mm above the
