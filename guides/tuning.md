@@ -45,16 +45,36 @@ The real PLA cooling story: **main part-cooling fan ~100%**, chamber kept under
    visible problem at stock accel was the printer rocking, not ringing. Find
    your own estimate (`find-your-numbers.md`) and compare test prints. The
    author's experience:
-   - On a solid/heavy bench: keep accel high (the author used ~8-10k at one point),
-     just cap outer-wall speed ~150 mm/s.
+   - On a solid/heavy bench: try high accel. On the author's printer (rigid
+     feet, 2026-10-05) walls stayed clean up to the printer's 20000 limit;
+     see `find-your-numbers.md` section 5 for that data point and how to find yours.
    - On a wobbly desk: **mass-load it** (paver + mat) first; that beats crippling
      accel. An aggressive 3000/2000 "antiwobble" set works but is overkill for
      quality and costs speed on infill/travel - use it only if you can't fix the desk.
-   - Overnight next to a bedroom: start with `--accel night` (antiwobble accel,
-     250 mm/s travel); `night2` (2000 accel, slower) and `night3` (night2 at half
-     speed) are quieter. The author's first night2 overnight print was still too loud
-     at full speed and fine at half speed; night3 is not printed yet. The screen's
-     silent mode is only `M220 S50`: it halves speed but keeps acceleration.
+   - For your quiet hours: `--accel night` (antiwobble accel, 250 mm/s travel),
+     `night2` (2000 accel, slower) and `night3` (night2 accels, walls and infill
+     75 mm/s, top surface 45, slow Z hops) cut shake. night3 printed overnight
+     on the author's printer (2026-10-03, 2026-10-07); night and night2 were
+     dropped there. Slower is not always quieter: see the speed band below.
+     The screen's silent mode is only `M220 S50`: it halves speed but keeps
+     acceleration. Sport (`M220 S130`) also scales feedrate only, not accel,
+     and ignores the slicer's max volumetric speed clip: on accel-limited
+     slices it gained only about 5%. Check your fastest feature x 1.3 against
+     your filament's max flow.
+   - **Noise has a speed band.** On the author's CC2 the belts ring loudly at
+     50-62.5 mm/s (+15 to +20 dB, the belts pluck at about 138 Hz) and are
+     quiet at 35-45 and 75-80 mm/s (2026-10-06, one printer). Lower accel only
+     trims it (about 4 dB at 500 vs 2000); a speed outside the band removes it.
+     Y is worse than X. Your band depends on belt tension: sweep straight X and
+     Y strokes from 35 to 95 mm/s in 2.5 mm/s steps with a phone spectrum app,
+     look at 125-160 Hz, then keep your quiet profile's wall and infill speeds
+     out of your band. On CoreXY each belt runs at |vx+vy| or |vx-vy|, so a
+     diagonal 7-35 deg off an axis drives one belt at 1.12-1.39x toolhead speed
+     and can put it in your band even when the toolhead is below it (matched in
+     software against recordings; a fix for this is untested).
+   - Z hops: `--proc travel_speed_z=5` for quiet prints. Hop drops at up to
+     50 mm/s make an audible clack; 5 mm/s sounded much better by ear (about a
+     week of use, no A/B test).
    - What number to pick is a measurement, not a copy-paste:
      `find-your-numbers.md`. One worked example with dates and firmware:
      `../examples/borja-floor-slab/`.
@@ -86,11 +106,14 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
 - **Firmware: stay on your delivered stock version; update only to fix a real
   problem.** The earlier note here said "No Klipper/SSH on the CC2". That was
   wrong: SSH works on stock firmware before 02.00.02.00 (the author's printer
-  runs OTA 01.03.02.36 and SSH works). What is true: OpenCentauri's patched firmware
-  and COSMOS (full Klipper) do not support the CC2, and 02.00.02.00 is reported
-  to remove SSH. Details and a per-version table: `firmware-and-ssh.md`.
+  runs OTA 01.03.02.36 and SSH works). What is true: 02.00.02.00 is reported
+  to remove SSH, and community firmware for the CC2 is alpha at best (a COSMOS
+  alpha was reported in 2026-10; not for daily use). Details and a per-version
+  table: `firmware-and-ssh.md`.
 - **Don't grease the carbon X-rods.** Grease + dust = abrasive paste = play =
   ringing "no software can fix." Clean with 99% IPA ~every 50 h.
+- **Clamping the magnetic toolhead cover** (rubber band, tape) does not stop
+  belt ringing: on the author's printer it moved the loud band to 47.5-55 mm/s.
 - **Stay on stock ElegooSlicer CC2 profiles** - they're CC2-tuned and well
   regarded for PLA. Community packs (Botmans, Willow) are optional starting
   points, not proven upgrades.
@@ -99,6 +122,11 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
 
 - Anti-shake: **mass on a rigid base** (16x16" paver + rubber mat). Elegoo's soft
   AV feet let the unit *rock* - don't rely on them. See `rigid-feet.md`.
+- Soft isolation under a slab (balls, foam) cut floor-borne hum on the author's
+  setup (5-8 dB measured) but lets the whole stack sway at 5-7 Hz (0.2-0.4 mm
+  measured). More mass on the soft layer reduces the sway. Measure the sway
+  before you raise accel on a soft stack (walls still printed clean at 20000 on
+  that stack, 2026-10-05).
 - First layer: inspect before touching Z, adjust in 0.05 mm steps, re-run the
   **bed mesh** (not a global offset) if uneven; clean the nozzle before leveling.
 - Match plate side to material (textured = grippy/CF; smooth = glossy PLA) and
@@ -127,6 +155,10 @@ profile (`slice_cc2.py` does the flattening). Typical install path:
 | Flow (plain PLA) | `filament_flow_ratio` | filament | `["0.98"]` | calibrate (about `["0.99"]`) | calibrate |
 | Aux fan (only small parts) | `additional_cooling_fan_speed` | filament | `["0"]` | leave `["0"]`; ~`["50"]` small detail only | do NOT blanket-set |
 | Multicolor purge routing | `flush_into_infill` / `flush_into_object` | project | off | `1` | untested |
+
+ElegooSlicer's `resonance_avoidance` (48-64 mm/s) moved only outer walls in
+a software check; to keep features out of a noisy speed band, set the feature
+speeds directly.
 
 Accel is the one real decision and depends on your bench (see ranked #3). Jerk
 keys are not in the Elegoo JSON (`default_jerk` defaults to firmware): leave
@@ -157,9 +189,10 @@ PA (plain PLA 0.04) and the printer also tunes PA in its full calibration;
 which wins is unverified, so keep the preset's stock value (see "Don't bother /
 don't break" above). Practical per-filament sequence: **Temperature -> Flow
 Ratio -> Retraction -> Tolerance.** Tolerance (#6) is the lever for sliding-fit
-prints (e.g. a puzzle with sliding wagons). These are GUI-generated (the slicer
-varies settings per band), so run them from the Calibration menu, not the
-headless CLI. Step-by-step run-book (what to click, what to look at, what to
+prints (e.g. a puzzle with sliding wagons). In the slicer these are
+GUI-generated (it varies settings per band); `../calibration/` also has
+headless generators for the temperature tower, flow (YOLO), max volumetric
+speed and a retraction + fit card. Step-by-step run-book (what to click, what to look at, what to
 record): `../calibration/README.md`, with results per filament in `../filaments/`.
 
 Extra troubleshooting resources:

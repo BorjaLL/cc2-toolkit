@@ -26,9 +26,10 @@ What that `max_accel` number is:
   ([Measuring resonances](https://www.klipper3d.org/Measuring_Resonances.html)).
 - **Not a hard limit.** The printer still moves faster if asked to.
 - **Not applied.** The calibration saves the shaper type and frequency only.
-  The stock `printer.cfg` has `max_accel = 20000`, and the slicer sends
-  `SET_VELOCITY_LIMIT ACCEL=...` per feature (walls, infill, travel), which is
-  what the printer actually uses.
+  The stock `/opt/inst/printer.cfg` has `max_accel = 20000` (the running
+  process loads `/opt/inst/printer_dsp.cfg`; check both if you look), and the
+  slicer sends `SET_VELOCITY_LIMIT ACCEL=...` per feature (walls, infill,
+  travel), which is what the printer actually uses.
 
 So the stock ElegooSlicer profile (`default_acceleration = 10000`) can run most
 of a print above your estimate, and nothing tells you. Whether that matters
@@ -108,6 +109,13 @@ Y: mzv 45.2 Hz, suggested max_accel <= 5800
    `tools/slice_cc2.py`: `--proc default_acceleration=5000`.
 4. Fixing what the printer stands on (rigid feet, heavy slab) often gives back
    more than lowering accel. See `rigid-feet.md`, then recalibrate and re-check.
+
+One data point (2026-10-05, firmware 01.03.02.36): on the author's printer
+(rigid feet, slab on a soft layer, Y estimate 6800), a walls-only tower printed clean at every
+band from 5000 to 20000, and a tower with infill at 20000 rocked but showed no
+ringing or layer shift. The estimate is a starting point; your limit is what
+your prints and your stand show. Untested at high accel: first layer, top
+surface, bridges.
 
 ## Share your numbers
 

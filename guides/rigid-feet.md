@@ -1,7 +1,12 @@
-# CC2 rigid feet (parked 2026-09-28)
+# CC2 rigid feet (researched 2026-09-28, printed 2026-09-30)
 
-Status: researched, nothing bought or printed yet. Treat the candidates as
-leads, not tested fixes.
+Status (2026-09-30): printed and in use. A solid printed PLA+ foot (40 mm OD x
+18 mm, a 32 mm bore 13 mm deep that fits over the stock foot; same interface
+as Printables 1579825, but a solid base instead of its TPU part) moved the
+printer's sway from about 6.5 Hz to about 19 Hz. At the same accel that is
+about 9x less movement. Shaper frequencies barely changed (X 51.6 -> 52.0 Hz,
+Y 45.2 -> 44.8 Hz). Recalibrate input shaping after fitting feet. One printer,
+one floor; the candidates below are still untested leads.
 
 Problem: on a floor slab the CC2 rocks on its soft stock silicone feet. Soft
 feet protect a table surface; on a slab that buys nothing, so the fix is stiff
@@ -13,8 +18,9 @@ Constraints:
   (3 sources), likely M4 or M5. Unmeasured.
 - Re-run input shaping after any foot change (`find-your-numbers.md`).
 
-Blocking step: tip the printer, undo one foot (3 mm Allen key), record screw
-size x length and foot height/diameter. Everything below depends on that.
+The printed foot avoids the screw question: it caps the stock foot. The foot
+screw size is still unmeasured (undo one foot with a 3 mm Allen key if you
+want screw-on feet).
 
 Candidates (prices are UK, 2026-09-28):
 - Any thread: Adam Hall 4911 PVC feet, 38x25 mm, bolt-through,
