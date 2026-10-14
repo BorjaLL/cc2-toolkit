@@ -352,6 +352,15 @@ class TestAdaptive(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
 
+class TestNightProfile(unittest.TestCase):
+    def test_night3_out_of_the_authors_ringing_band(self):
+        n3 = sc.ACCEL["night3"]
+        for k in ("outer_wall_speed", "inner_wall_speed", "sparse_infill_speed",
+                  "internal_solid_infill_speed", "top_surface_speed"):
+            self.assertFalse(50 <= float(n3[k]) <= 62.5, k)
+        self.assertEqual(n3["travel_speed_z"], "5")
+
+
 class TestApi(unittest.TestCase):
     def test_all_names_exist(self):
         for m in (sc, snd):

@@ -105,7 +105,7 @@ ACCEL = {
                    "inner_wall_acceleration": "3000", "top_surface_acceleration": "1500",
                    "travel_acceleration": "3000", "initial_layer_travel_acceleration": "3000",
                    "outer_wall_speed": "120", "travel_speed": "250"},
-    # quieter still (2026-09-30, Fable planner model + phone logs): printer shake tracks
+    # quieter still (2026-09-30, a simple model + phone logs): printer shake tracks
     # ACCEL (force = moving mass x accel), speed only shortens the pulse, so accel and
     # travel accel go down hardest; hops are ~2 mm and never reach travel speed.
     # SQUARE_CORNER_VELOCITY left alone (lower modelled slightly worse). ~+14% time vs night.
@@ -118,18 +118,24 @@ ACCEL = {
                    "sparse_infill_speed": "120", "internal_solid_infill_speed": "120",
                    "top_surface_speed": "100", "gap_infill_speed": "80",
                    "support_speed": "100", "support_interface_speed": "60"},
-    # night2 accels at half speed (2026-10-02): the first night2 overnight print was still
+    # night2 accels at slow speeds (2026-10-02): the first night2 overnight print was still
     # too loud in balanced mode and fine in silent (M220 S50, accel unchanged), so audible
-    # noise tracks speed. Bakes silent mode into the slice: no screen input, honest time
-    # estimate. ~1.4x night2 time.
+    # noise depends on speed. Bakes a slow mode into the slice: no screen input, honest
+    # time estimate.
+    # Walls and infill at 75, top surface at 45 (2026-10-06): the author's printer rang at
+    # 50-62.5 mm/s (belts plucking, +15 to +20 dB) and was quiet at 35-45 and 75-80, so
+    # the first night3 speeds (50-60) sat inside that band. Your band depends on belt
+    # tension: sweep yours (guides/tuning.md) and move these out of it.
+    # travel_speed_z 5: slow Z-hop drops, the stock hop lands with an audible clack.
     "night3":     {"default_acceleration": "2000", "outer_wall_acceleration": "1500",
                    "inner_wall_acceleration": "2000", "sparse_infill_acceleration": "2000",
                    "internal_solid_infill_acceleration": "2000", "top_surface_acceleration": "1000",
                    "travel_acceleration": "1500", "initial_layer_travel_acceleration": "1500",
                    "initial_layer_acceleration": "500",
-                   "travel_speed": "75", "outer_wall_speed": "50", "inner_wall_speed": "60",
-                   "sparse_infill_speed": "60", "internal_solid_infill_speed": "60",
-                   "top_surface_speed": "50", "gap_infill_speed": "40",
+                   "travel_speed": "75", "travel_speed_z": "5",
+                   "outer_wall_speed": "75", "inner_wall_speed": "75",
+                   "sparse_infill_speed": "75", "internal_solid_infill_speed": "75",
+                   "top_surface_speed": "45", "gap_infill_speed": "40",
                    "support_speed": "50", "support_interface_speed": "30"},
     # solid bench: fast, lean on the CC2's input shaping for ringing.
     "balanced":   {"default_acceleration": "8000", "outer_wall_acceleration": "5000",
