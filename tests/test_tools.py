@@ -499,6 +499,51 @@ class TestNightProfile(unittest.TestCase):
         self.assertEqual(n3["travel_speed_z"], "5")
 
 
+class ShellConn:
+    """Runs send_cc2's state-log command with a local sh, the log folder swapped for a temp
+    dir; every other command answers nothing (so start() stops at the pty check)."""
+
+    def __init__(self, logs):
+        self.logs = logs.replace(os.sep, "/")
+
+    def exec_command(self, cmd, timeout=None):
+        import subprocess
+        out = ""
+        if "handle_print_state" in cmd:
+            out = subprocess.run([shutil.which("sh"), "-c", cmd.replace("/opt/usr/logs", self.logs)],
+                                 capture_output=True, text=True).stdout
+        return None, io.BytesIO(out.encode()), io.BytesIO(b"")
+
+
+@unittest.skipUnless(shutil.which("sh"), "needs a POSIX sh to run the printer-side command")
+class TestStateLogRotation(unittest.TestCase):
+    IDLE = "[2026-10-01 10:00:00.000] handle_print_state print_state:standby\n"
+    BUSY = "[2026-10-01 09:00:00.000] handle_print_state print_state:printing\n"
+
+    def start(self, files):
+        d = tempfile.mkdtemp()
+        try:
+            for name, text in files.items():
+                with open(os.path.join(d, name), "w") as f:
+                    f.write("other line\n" + text)
+            with quiet(), self.assertRaises(SystemExit) as e:
+                snd.start(ShellConn(d), "a.gcode")
+            return str(e.exception.code)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_rotated_log_is_read(self):
+        # elegoo.log just rotated: no state line in it, the idle state is in elegoo.1.log
+        self.assertIn("/dev/pts/0", self.start({"elegoo.log": "", "elegoo.1.log": self.IDLE}))
+        self.assertIn("printer busy", self.start({"elegoo.log": "", "elegoo.1.log": self.BUSY}))
+
+    def test_current_log_wins(self):
+        self.assertIn("/dev/pts/0", self.start({"elegoo.log": self.IDLE, "elegoo.1.log": self.BUSY}))
+
+    def test_no_state_line_refuses(self):
+        self.assertIn("cannot read", self.start({"elegoo.log": ""}))
+
+
 class TestApi(unittest.TestCase):
     def test_all_names_exist(self):
         for m in (sc, snd, load("thumbnail")):
