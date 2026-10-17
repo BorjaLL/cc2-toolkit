@@ -10,6 +10,23 @@ Your printer, bench and filament differ from mine. The guides show you how to
 find **your** numbers; my results live in `examples/` as one worked example, not
 as recommended values.
 
+## What changed (2026-10-17)
+
+- **Motor drivers:** X/Y StealthChop can be switched live from G-code with no
+  reboot (corrects the earlier note); a StealthChop setting left on shifted
+  layers at 20000 accel (`guides/firmware-and-ssh.md`).
+- **Power cut:** the screen's power-loss Resume does not measure Z again and
+  printed in mid-air; how a layer recovery worked instead
+  (`guides/firmware-and-ssh.md`).
+- **Z offset:** the screen value went back to 0 after each print and adds to
+  the G-code's `z_offset`; slice it in (`guides/gotchas.md` item 24).
+- **Noise:** a second band with one belt at 42-52 mm/s; moving the printer
+  moved the bands; after-move checks (`guides/tuning.md`).
+- **More gotchas:** skirt off the bed on full plates, internal bridges at
+  40 mm/s, tall towers snapping in the base infill, top-surface flow 1.09.
+- **Filaments:** Elegoo PETG HF record (rough tops still open); measured
+  design clearances by hole direction (`calibration/README.md` Step 4).
+
 ## What changed (2026-10)
 
 Firmware 01.03.02.36 throughout.
@@ -41,7 +58,7 @@ Firmware 01.03.02.36 throughout.
 |---|---|
 | `guides/` | Find your numbers (input shaper vs slicer accel), tuning and noise, gotchas, SSH / firmware access, rigid feet |
 | `calibration/` | Printable tests with headless generators: temperature tower, YOLO flow, max volumetric speed, calibration card, ironing grid |
-| `filaments/` | Per-filament results template + worked results (Elegoo PLA, PLA Matte, PLA+, PLA-CF; DEEPLEE and SUNLU PLA+) |
+| `filaments/` | Per-filament results template + worked results (Elegoo PLA, PLA Matte, PLA+, PLA-CF, PETG HF; DEEPLEE and SUNLU PLA+) |
 | `tools/` | Slice from the command line (quiet accel presets, adaptive layers), send and start over SSH, check G-code accel against your calibration |
 | `examples/` | My measured numbers with full setup details |
 | `tests/` | Offline regression tests for `tools/` |
