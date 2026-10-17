@@ -85,5 +85,9 @@ In the G-code it cut Y direction reversals by 17% and saved 4% time.
 - Shaper re-runs: 2026-10-01 on the soft layer X mzv 52.8 / Y zv 44.0 Hz;
   2026-10-13 X zv 52.0 / Y zv 44.8 Hz, the same as on 2026-09-30. Stable
   within 0.8 Hz.
+- **2026-10-14 moved** off the floor onto a new slab on a shelf (rigid feet
+  kept). Shaper 2026-10-15: X zv 52.4 / Y zv 44.6 Hz. Push-test sway 0.23 mm
+  at 5000 and 0.36 mm at 20000 (floor slab: 0.18 / 0.28-0.30), about
+  5.5-6 Hz. Belts plucked left 140, right 144 Hz. Cap 20000 kept.
 
 Untested at 20000: first layer, top surfaces, bridges.

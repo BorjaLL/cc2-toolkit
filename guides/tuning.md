@@ -72,6 +72,17 @@ The real PLA cooling story: **main part-cooling fan ~100%**, chamber kept under
      diagonal 7-35 deg off an axis drives one belt at 1.12-1.39x toolhead speed
      and can put it in your band even when the toolhead is below it (matched in
      software against recordings; a fix for this is untested).
+   - **A second, lower band: one belt at 42-52 mm/s.** Short night bursts at
+     about 117 Hz came from one belt running 42-52 mm/s (the note moves about
+     2.5 Hz per mm/s of belt speed). A dry test (2026-10-15, 5 passes, one
+     printer) put one belt at 47.5 mm/s about 7 dB over the same move with
+     both belts at or below 38.5 mm/s, which sat at the idle level. Halving a
+     75 mm/s night profile lands diagonals right in it: check belt speeds, not
+     toolhead speed.
+   - **Moving the printer moves the band.** On a new slab on a shelf
+     (2026-10-14) the same sweep was 4-12 dB quieter at 57.5-72.5 mm/s,
+     still loud at 50-55, and 5 dB louder at 42.5-45 mm/s. Re-run the sweep
+     after a move.
    - Z hops: `--proc travel_speed_z=5` for quiet prints. Hop drops at up to
      50 mm/s make an audible clack; 5 mm/s sounded much better by ear (about a
      week of use, no A/B test).
@@ -127,6 +138,14 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
   measured). More mass on the soft layer reduces the sway. Measure the sway
   before you raise accel on a soft stack (walls still printed clean at 20000 on
   that stack, 2026-10-05).
+- **After moving the printer** (the author's went from the floor slab to a
+  new slab on a shelf, 2026-10-14): check it does not rock, re-run the screen
+  self-check (shaper, mesh), pluck the belts and compare with your last
+  reading, look over the PTFE tube, panels, door and screws, and re-measure
+  the sway before keeping a high accel. On that move the shaper stayed within
+  1 Hz (X zv 52.4, Y zv 44.6), the left and right belts read 140 and 144 Hz
+  (137-140 before; the short front spans read about 94 Hz) and the sway rose a
+  little (0.36 mm at 20000 vs 0.28-0.30): the 20000 cap was kept.
 - First layer: inspect before touching Z, adjust in 0.05 mm steps, re-run the
   **bed mesh** (not a global offset) if uneven; clean the nozzle before leveling.
 - Match plate side to material (textured = grippy/CF; smooth = glossy PLA) and
