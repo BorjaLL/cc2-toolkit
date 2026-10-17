@@ -26,9 +26,11 @@ How to calibrate a new filament: `calibration/README.md`.
 | [DEEPLEE PLA+ 2.0](deeplee-pla-plus-2.md) | `Elegoo PLA+ @ECC2` | 220 | 1.00 | 0.8 | 0.2 |
 | [SUNLU PLA+](sunlu-pla-plus.md) | `Elegoo PLA+ @ECC2` | 215 | 0.98 | 0.8 | 0.25 (hinge test) |
 | [Elegoo PLA-CF black](elegoo-pla-cf-black.md) | `Elegoo PLA-CF @ECC2` | | | | not calibrated |
+| [Elegoo PETG HF black](elegoo-petg-hf-black.md) | `Elegoo PETG HF @ECC2` | 240 | 1.00 | 0.8 | 0.4 (hinge test, provisional); rough tops open |
 
 On four of these (PLA Matte, PLA+ black, DEEPLEE, SUNLU) the retraction
 tests strung only at 0.0 mm or not at all, so the stock 0.8 mm needed no
-change for PLA-family filament on the CC2. Fit numbers come from
+change for PLA-family filament on the CC2; Elegoo PETG HF did not string
+at any band either. Fit numbers come from
 different tests (rail thickness, hinge) and are one printer's results:
 measure your own.
