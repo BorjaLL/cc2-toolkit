@@ -269,6 +269,20 @@ test, then decide.
   overcorrects. The author's dovetails used -0.1 mm contour. Reprint the one
   part, test again.
 
+**Design clearances that worked** (gap per side, no compensation, Elegoo PLA+
+unless noted, one printer, 2026-10). Hole direction matters: holes whose axis
+runs along print Z (vertical) print undersize, holes in the bed plane print
+about true.
+
+| Fit | Hole axis | Gap per side | Seen |
+|---|---|---|---|
+| Sliding dovetail, 8-12 mm neck | vertical | 0.15 | fitted by hand |
+| Sliding puzzle joint | horizontal | 0.2 | fitted; tighter not tried |
+| 1.75 mm filament pin in a 2.2 / 2.3 / 2.4 mm hole | vertical | 0.225 / 0.275 / 0.325 | friction / free / loose |
+| 2.0 mm hole for the same pin | horizontal | 0.125 | grips |
+| 10 x 3 mm magnet pocket | horizontal | 0.1 and 0.2 | both too loose (magnet falls out) |
+| Wedge tag, PLA Matte | vertical | 0.05 | clicks in, snug |
+
 ## Save it in two places
 
 1. **In the slicer:** every value above goes into the user filament preset
