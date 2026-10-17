@@ -87,7 +87,10 @@ rebuild the same tests from your ElegooSlicer install and slice them with
    `gui.log` (`SET_GCODE_OFFSET Z=...`). Elegoo's guide:
    https://wiki.elegoo.com/Centauri-carbon/tutorial-for-fine-tuning-after-automatic-re-leveling
 5. **Record the Z offset** you ended on in your own notes (it is a printer
-   fact, not a filament one).
+   fact, not a filament one). On 01.03.02.36 the screen value went back to 0
+   after a print ended or was cancelled, and a screen value is added to the
+   G-code's `z_offset`: to keep it, slice it in (`--proc z_offset=0.05`) and
+   leave the screen at 0 (`../guides/gotchas.md` item 24).
    If the first layer is good in one spot and bad in another, re-run the
    printer's bed mesh, do not chase it with the global offset.
 

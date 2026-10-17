@@ -164,4 +164,37 @@ first two items are corrections to advice I found elsewhere.
 23. **First part on the plate blotchy: purge ooze** (2026-10-09). The CC2 start
     G-code draws a purge line at the front and then travels straight to the
     first part. With no skirt, the nozzle arrived still oozing. A 2-loop skirt
-    3 mm out catches it.
+    3 mm out catches it. On a nearly full plate check the skirt still fits:
+    one 2-loop skirt reached Y -2 and Y 255 on the 256 mm bed (2026-10-17), and
+    other full plates made the CLI fail (exit -102). Drop the skirt there
+    (`--proc skirt_loops=0`).
+
+## Later finds (2026-10-15 to 2026-10-17)
+
+24. **The screen Z offset does not stay, and it adds to the slicer's.** On
+    01.03.02.36 the touchscreen Z offset went back to 0 after a print ended
+    or was cancelled (`elegoo.log`, 2026-10-16), and a value set on the
+    screen is applied at the start on top of the G-code's own `z_offset`: one
+    evening's prints ran at +0.10 mm because both held +0.05. To keep an
+    offset, put it in the slice (`--proc z_offset=0.05`, PLUS = bigger gap)
+    and leave the screen at 0.
+25. **Internal bridges: try 40 mm/s.** The Elegoo process prints internal
+    bridges at 150% of the bridge speed (about 75 mm/s). Lines over sparse
+    infill lifted at the edges and the nozzle dragged them into thick curls
+    on a shelf part (seen on a second printer with the same profile value,
+    2026-10-17); 40 mm/s fixed it there. `--proc internal_bridge_speed=40`.
+    Not yet A/B tested on the CC2.
+26. **Tall towers snap in the base infill, not at the plate.** A 79 mm PETG
+    temperature tower fell at its top block (2026-10-17): the brim and base
+    pad stayed stuck, the tower broke a few mm up through 15% infill with
+    2 walls, levered over when the nozzle caught a curled edge in the coldest
+    block. Fix: denser base infill (and Z hop), not a bigger brim or a hotter
+    bed. The printer's AI camera paused the print by itself.
+27. **Top-surface flow ratio 1.09.** The stock CC2 process prints top
+    surfaces at `top_solid_infill_flow_ratio` 1.09 on top of your filament
+    flow. That spoils flow pads (`../calibration/card/README.md`) and made a
+    PETG hinge test's tops 9% over the calibrated flow. Setting it to 1.0
+    alone did not fix rough PETG tops (`../filaments/elegoo-petg-hf-black.md`).
+28. **Power cut: do not press the screen's Resume.** It does not measure Z
+    again and printed in mid-air after a second trip. Cancel and recover from
+    the layer instead: `firmware-and-ssh.md`.
