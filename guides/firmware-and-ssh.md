@@ -145,23 +145,79 @@ tools that reconnect per snapshot. Crash dumps go to
 
 ## Motor drivers (TMC2209)
 
-Findings on 01.03.02.36 (2026-10-12/13), not a recipe. X and Y are TMC2209
-drivers with StallGuard homing; stock runs them in SpreadCycle at all speeds
-(`stealthchop_threshold` is commented out in `/opt/inst/printer_dsp.cfg`).
-`DUMP_TMC` works on the pty.
+Findings on 01.03.02.36 (2026-10-12 to 2026-10-15, one printer), not a
+recipe. X and Y are TMC2209 drivers with StallGuard homing; stock runs them in
+SpreadCycle at all speeds (`stealthchop_threshold` is commented out in
+`/opt/inst/printer_dsp.cfg`). `DUMP_TMC STEPPER=stepper_x` works on the pty
+(stock: GCONF `1c400000`, TPWMTHRS `fffff`).
 
-- From G-code you can go StealthChop -> SpreadCycle but not back:
-  `SET_TMC_FIELD ... VALUE=0` and `VELOCITY=999999` both fail with error 803
-  "Specify either VALUE or VELOCITY".
-- The only route found is editing `stealthchop_threshold` in
-  `printer_dsp.cfg` and rebooting. Homing still worked in StealthChop.
-- Full-time StealthChop on the author's printer: a loud belt growl at 20000
-  accel and loud homing (rejected for day prints). A phone sweep showed
-  2.5-7 dB quieter at 20-40 mm/s on most moves, louder on diagonals at
-  60-70 mm/s. Usable only with slow, low-accel profiles. A hybrid threshold is
-  untested.
+- **A literal 0 is refused.** `SET_TMC_FIELD ... VALUE=0` stops with error 803
+  "Specify either VALUE or VELOCITY", and the port has no `VELOCITY=`
+  parameter (`VELOCITY=999999` gives the same 803). A print file with either
+  line stops there.
+- **Live switch with no reboot (corrects the earlier "config edit and reboot
+  only" note, 2026-10-14).** The field write is masked, so a value whose field
+  bits are 0 gets through:
+  ```
+  SET_TMC_FIELD STEPPER=stepper_x FIELD=en_spreadcycle VALUE=2
+  SET_TMC_FIELD STEPPER=stepper_x FIELD=tpwmthrs VALUE=1048576
+  ```
+  (and the same for `stepper_y`) gives GCONF `1c000000` / TPWMTHRS `0`:
+  StealthChop at every speed. Back to stock: `en_spreadcycle VALUE=1`,
+  `tpwmthrs VALUE=1048575`. A hybrid threshold is a plain TPWMTHRS value
+  (170 was about 55 mm/s on this printer: StealthChop below, SpreadCycle
+  above). Check every switch with `DUMP_TMC`. The same lines work inside a
+  print file.
+- **The live mode sticks.** It held through `M84`, `G28` and a print start,
+  and a cancel or an error leaves it as it was. The screen's self-check put
+  it back to stock once; a reboot always does.
+- **StealthChop left on shifted layers at high accel.** On 2026-10-15 a
+  StealthChop setting left on after a night print was still live in the
+  morning: a 20000 accel day print shifted layers, then a second one.
+  Switching back to stock fixed it. If you use StealthChop, switch back to
+  stock inside the same file, and check `DUMP_TMC` before a fast print.
+- **Switch while parked.** A switch block at a layer change left a mark on
+  the part's seam corner at each switch. Retract, lift, move off the part,
+  switch, then come back.
+- Editing `stealthchop_threshold` in `printer_dsp.cfg` and rebooting also
+  works (2026-10-13), but it holds for the whole print. Homing worked in
+  StealthChop.
+- Noise: full-time StealthChop gave a loud belt growl at 20000 accel and loud
+  homing (rejected for day prints). A phone sweep showed 2.5-7 dB quieter at
+  20-40 mm/s on most moves, louder on diagonals at 60-70 mm/s. A later A/B
+  inside a print file, at night speeds (accel 2000), was only about 1-2 dB
+  quieter.
 
 Editing `printer_dsp.cfg` is at your own risk; back it up first.
+
+## Power cut mid-print: do not trust the screen's Resume
+
+Seen once (2026-10-15, 01.03.02.36), read from `elegoo.log`. After a power
+trip the printer reboots and offers a power-loss resume. Resume sets Z from
+the value saved in `power_outage.json`, homes only X and Y and moves to the
+saved height: Z is not measured again. A second trip during a resume's
+reheat saved Z as 0, and the next two Resumes printed about 50 mm above the
+part.
+
+What worked instead: Cancel on the screen (the part stays on the bed; do not
+home Z from the screen, it raises the bed towards the nozzle), then a
+recovery G-code built from the original file:
+
+1. Find the last layer started (`elegoo.log` `cmd_M73 current_layer:`;
+   `power_outage.json` `file_position` against the `;LAYER:` byte offsets
+   says how far into it), and confirm with a height measurement.
+2. Heat the bed, move the bed down 10 mm first (Z is unknown, down is safe),
+   home X and Y, home Z with the head off the part, load the mesh, heat,
+   purge, rise above the part.
+3. Restore fans, pressure advance, accel and extrusion mode as they were at
+   that layer, travel at a safe height, lower onto the part and run the
+   original file from `;LAYER:N` to the end.
+
+The part finished, but it came off the bed with no force at the end: every
+cool-down and reheat weakens adhesion, so recover soon or reprint. A Z trim
+sent while paused was undone by Resume; send it while printing. Repeated
+trips under load point at the supply: plug the printer straight into a wall
+socket, not a strip or extension lead.
 
 ## Network notes
 
