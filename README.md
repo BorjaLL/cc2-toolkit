@@ -34,8 +34,10 @@ Firmware 01.03.02.36 throughout.
 - **Accel:** walls printed clean up to the printer's 20000 limit on rigid feet,
   well above the shaper's estimate (`guides/find-your-numbers.md`,
   `examples/borja-floor-slab/`).
-- **Rigid feet printed and in use:** sway moved from about 6.5 Hz to about
-  19 Hz (`guides/rigid-feet.md`).
+- **Feet tested (2026-10-18):** Elegoo's anti-vibration feet vs printed rigid
+  feet, dry head moves, phones on and around the printer: Elegoo's shook ~20%
+  less under hard moves, a draw on everyday moves, no noise difference. Charts
+  in `guides/rigid-feet.md`.
 - **Noise:** belts ring in a speed band (50-62.5 mm/s on the author's printer);
   how to find yours, quiet profile and Z-hop notes (`guides/tuning.md`).
 - **New gotchas:** a weeping hotend crust behind first-layer blobs, purge ooze
