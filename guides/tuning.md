@@ -131,12 +131,10 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
 
 ## Hardware / one-time
 
-- Anti-shake: **mass on a rigid base** (16x16" paver + rubber mat). Elegoo's soft
-  AV feet let the unit *rock* - don't rely on them. See `rigid-feet.md`.
-  Update 2026-10-18: measured with the printer on a slab on 9 half tennis balls,
-  Elegoo's AV feet shook less than
+- Anti-shake: **mass on a rigid base** (16x16" paver + rubber mat). Feet: with
+  the printer on a slab on 9 half tennis balls, Elegoo's AV feet shook less than
   printed rigid feet under hard moves and matched them on everyday moves
-  (`rigid-feet.md`, top section).
+  (measured 2026-10-18, `rigid-feet.md`).
 - Soft isolation under a slab (balls, foam) cut floor-borne hum on the author's
   setup (5-8 dB measured) but lets the whole stack sway at 5-7 Hz (0.2-0.4 mm
   measured). More mass on the soft layer reduces the sway. Measure the sway

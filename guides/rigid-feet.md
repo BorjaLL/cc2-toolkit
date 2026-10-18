@@ -1,6 +1,10 @@
-# CC2 rigid feet (researched 2026-09-28, printed 2026-09-30)
+# CC2 feet: printed rigid feet vs Elegoo anti-vibration feet (tested 2026-10-18)
 
-## Update 2026-10-18: measured against Elegoo's anti-vibration feet, and the soft feet won
+The rigid foot: a solid PLA+ cup, 40 mm across x 18 mm, 32 mm bore 13 mm
+deep that slips over the stock foot (interface from Printables 1579825).
+Older notes on it: git history of this file.
+
+## Result: the soft feet won
 
 After Reddit replies said soft feet are there for a reason, I ran the same dry
 head-move tests (no heat, no filament) on my rigid feet and on Elegoo's
@@ -35,64 +39,8 @@ alarming):
 - Elegoo's feet shake ~20% less under the violent test and settle faster after
   every stop; on everyday moves it is a draw.
 - Noise: no measurable difference.
-- My pick now is Elegoo's feet. The 6.5 -> 19 Hz result below was measured
-  on 2026-09-30 with the slab on the floor on 12 half tennis balls; the printer
-  has moved since (new slab, 9 balls) and that result did not hold here.
-
-The original notes follow, kept for the record.
-
-Status (2026-09-30): printed and in use. A solid printed PLA+ foot (40 mm OD x
-18 mm, a 32 mm bore 13 mm deep that fits over the stock foot; same interface
-as Printables 1579825, but a solid base instead of its TPU part) moved the
-printer's sway from about 6.5 Hz to about 19 Hz. At the same accel that is
-about 9x less movement. Shaper frequencies barely changed (X 51.6 -> 52.0 Hz,
-Y 45.2 -> 44.8 Hz). Recalibrate input shaping after fitting feet. One printer,
-one floor; the candidates below are still untested leads.
-
-Problem: on a floor slab the CC2 rocks on its soft stock silicone feet. Soft
-feet protect a table surface; on a slab that buys nothing, so the fix is stiff
-feet. Background on the shake problem: `tuning.md` ("Hardware / one-time").
-
-Constraints:
-- Keep at least stock height: the CC2 pulls mainboard intake air through bottom vents.
-- CC1 feet and parts do not fit: the CC2 foot screw is smaller than the CC1's M6
-  (3 sources), likely M4 or M5. Unmeasured.
+- My pick now is Elegoo's feet. An earlier measurement (2026-09-30, slab on
+  the floor on 12 half tennis balls) had the rigid feet moving the sway from
+  about 6.5 Hz to about 19 Hz; on the current setup (new slab, 9 balls) that
+  did not hold.
 - Re-run input shaping after any foot change (`find-your-numbers.md`).
-
-The printed foot avoids the screw question: it caps the stock foot. The foot
-screw size is still unmeasured (undo one foot with a 3 mm Allen key if you
-want screw-on feet).
-
-Candidates (prices are UK, 2026-09-28):
-- Any thread: Adam Hall 4911 PVC feet, 38x25 mm, bolt-through,
-  https://www.amazon.co.uk/dp/B00SJFDYL0 (3.20 GBP; the 33 mm tall version 5.28).
-  Needs a longer screw.
-- M5: BORDSTRACT levelling feet https://www.amazon.co.uk/dp/B0DNSMTBH1
-  (7.39 for 2, 10 kg per foot rating, thin margin).
-- M6: RUBBERGIANT https://www.amazon.co.uk/dp/B0C6FJ2FMR (12.50 for 4, 100 kg per foot).
-- Printable: Printables 1579825 (the only confirmed CC2 fit; adapter in PETG-CF
-  plus a TPU part. Printing that part in PETG for a rigid foot is untested).
-  Printables 1409510 is the best rigid CC1 design (M6 pattern, needs a remix).
-- Rejected: soft/bellows feet (YUYUEMI B0FQ5N93XR), sorbothane isolation
-  (a reddit recipe), squash-ball / Hula / TPU feet.
-- Soft stuff, if any, goes UNDER the slab, never under the printer.
-- Mats and pads bought for the purpose did not fix rocking in any account I read.
-
-Side find (Z lead screw, not the feet): I did not find the cap-plus-foam model an
-owner described. Closest: MakerWorld 2396264 Rod Hole Covers, Printables 1266085
-Z bearing cover (limits max print height to 250 mm).
-
-Sources: my table-shake notes (2026-09-16), reddit r/elegoo 1kdfqd9, an
-Elegoo CC/CC2 Facebook group post.
-
-## Other first prints from the same Facebook comment (searched 2026-09-28)
-
-- Spool dust cover, CC2-specific: Thingiverse 7361381 (Sienek). Slides onto the
-  CC2 spool holder, print 2 + 2 mirrored, PLA, 0 makes when I looked.
-- Z-rod hole covers (bottom plate): Printables 1402357 (NoG, CC2 fit confirmed,
-  5 makes, rigid, press-fit halves) or Printables 1709530 (TPU one-piece, CC2).
-  MakerWorld 2396264 says only "Centauri Carbon". For all of them: the rod
-  bearings drop into these holes, so remove the covers or cap max print height at
-  ~225 mm, or the bed jams.
-- Lead screw top cap with foam: not found; Elegoo stock has a silicone sleeve and
-  a fixing block there.

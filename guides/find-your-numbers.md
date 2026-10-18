@@ -107,8 +107,10 @@ Y: mzv 45.2 Hz, suggested max_accel <= 5800
    `outer_wall_acceleration` below it), print the same part, compare.
    In ElegooSlicer: Process > Speed > Acceleration. With
    `tools/slice_cc2.py`: `--proc default_acceleration=5000`.
-4. Fixing what the printer stands on (rigid feet, heavy slab) often gives back
-   more than lowering accel. See `rigid-feet.md`, then recalibrate and re-check.
+4. Fixing what the printer stands on (heavy slab, feet) often gives back
+   more than lowering accel. Printed rigid feet lost to Elegoo's anti-vibration
+   feet in my 2026-10-18 test (`rigid-feet.md`); recalibrate and re-check after
+   any change.
 
 One data point (2026-10-05, firmware 01.03.02.36): on the author's printer
 (rigid feet, slab on a soft layer, Y estimate 6800), a walls-only tower printed clean at every
