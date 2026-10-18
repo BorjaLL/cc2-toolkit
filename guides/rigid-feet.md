@@ -17,30 +17,37 @@ zigzag, z-hops, random travel):
 
 ![everyday moves](img/feet-test-everyday-moves.png)
 
-Violent test (back-and-forth at 2.5-7 cycles per second, accel 20000, the
-printer's own rocking range; on the Elegoo feet it shook hard enough to look
-alarming):
+Violent test (back-and-forth at 2.5-7 cycles per second, accel 20000, aimed at
+the printer's own rocking range; it shook hard on both sets of feet):
 
 ![violent test](img/feet-test-violent.png)
 
+Chart caveat: in the violent chart the z-hop bars and the "after each stop"
+panel are not reliable (the second pass of each run lines up one block late).
+The table uses only numbers that do not depend on that alignment.
+
 | | Elegoo AV feet | Rigid PLA feet |
 |---|---|---|
-| Violent: sway | 1.75 mm | 1.92 mm |
-| Violent: shake while moving | 1.39 m/s2 | 1.77 m/s2 |
-| Violent: shake left after stops | 0.49 m/s2 | 0.64 m/s2 |
-| Everyday: sway | 0.41 mm | 0.35 mm |
-| Everyday: shake left after stops | 0.06 m/s2 | 0.10 m/s2 |
-| Rocking frequency after a stop | 3.3 Hz | 4.7 Hz |
-| Noise beside / next room | within 1 dB | within 1 dB |
+| Violent: shake at the top of the printer (median of each pass) | 1.67 m/s2 (two runs: 1.67, 1.70) | 2.00 m/s2 |
+| Violent: estimated sway, whole run (1-50 Hz) | 2.7-2.9 mm | 2.6 mm |
+| Everyday: estimated sway, whole run | 0.45-0.47 mm | 0.42 mm (two installs) |
+| Everyday: shake while moving / after stops | about equal | about equal |
+| Rocking frequency | about 3-3.3 Hz | about 3.7-4.7 Hz |
+| Noise beside / next room | within about 1 dB on average | within about 1 dB on average |
 
-- The rigid feet do not stop the rocking: they raise its frequency
-  (3.3 -> 4.7 Hz) and the printer shakes harder when driven there. The 3-5 Hz
-  rock is printer + slab swaying on the tennis balls; the feet only shift it.
-- Elegoo's feet shake ~20% less under the violent test and settle faster after
-  every stop; on everyday moves it is a draw.
-- Noise: no measurable difference.
-- My pick now is Elegoo's feet. An earlier measurement (2026-09-30, slab on
-  the floor on 12 half tennis balls) had the rigid feet moving the sway from
-  about 6.5 Hz to about 19 Hz; on the current setup (new slab, 9 balls) that
-  did not hold.
+- Under hard back-and-forth the Elegoo feet shake about 15-20% less at the
+  top of the printer. That is the one difference that held up.
+- How far the printer sways is a draw: the rigid feet raise the rocking
+  frequency, they do not make the rock smaller.
+- On everyday moves the two are a draw; the rigid feet sway very slightly less.
+- Noise: no reliable winner.
+- Likely cause of the rocking (not tested): the printer and slab swaying
+  together on the tennis balls. Removing the balls is the next test.
+- My pick: Elegoo's feet, with modest confidence (slightly less shake under
+  hard moves, nothing worse). An earlier measurement (2026-09-30, slab on the
+  floor on 12 half tennis balls) had the rigid feet moving the sway from about
+  6.5 Hz to about 19 Hz; that did not repeat on the current setup and is
+  unexplained.
+- Not tested: print quality, and whether the printer's 20000 accel limit
+  still prints clean on soft feet.
 - Re-run input shaping after any foot change (`find-your-numbers.md`).
