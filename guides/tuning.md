@@ -133,7 +133,8 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
 
 - Anti-shake: **mass on a rigid base** (16x16" paver + rubber mat). Elegoo's soft
   AV feet let the unit *rock* - don't rely on them. See `rigid-feet.md`.
-  Update 2026-10-18: measured on a shelf slab, Elegoo's AV feet shook less than
+  Update 2026-10-18: measured with the printer on a slab on 9 half tennis balls,
+  Elegoo's AV feet shook less than
   printed rigid feet under hard moves and matched them on everyday moves
   (`rigid-feet.md`, top section).
 - Soft isolation under a slab (balls, foam) cut floor-borne hum on the author's

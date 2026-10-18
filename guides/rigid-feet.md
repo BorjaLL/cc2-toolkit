@@ -5,8 +5,8 @@
 After Reddit replies said soft feet are there for a reason, I ran the same dry
 head-move tests (no heat, no filament) on my rigid feet and on Elegoo's
 anti-vibration feet. Phones: one taped on top of the printer (acceleration),
-one beside it and one in the next room (sound). Printer on a stone slab on a
-shelf. Dry head moves only: print quality was not compared.
+one beside it and one in the next room (sound). Printer on a stone slab that
+sits on 9 half tennis balls. Dry head moves only: print quality was not compared.
 
 Everyday moves (lines 40-500 mm/s, accel 1000-20000, diagonals, circles,
 zigzag, z-hops, random travel):
@@ -29,13 +29,15 @@ alarming):
 | Rocking frequency after a stop | 3.3 Hz | 4.7 Hz |
 | Noise beside / next room | within 1 dB | within 1 dB |
 
-- The rigid feet do not stop the rocking on my shelf: they raise its frequency
-  (3.3 -> 4.7 Hz) and the printer shakes harder when driven there.
+- The rigid feet do not stop the rocking: they raise its frequency
+  (3.3 -> 4.7 Hz) and the printer shakes harder when driven there. The 3-5 Hz
+  rock is printer + slab swaying on the tennis balls; the feet only shift it.
 - Elegoo's feet shake ~20% less under the violent test and settle faster after
   every stop; on everyday moves it is a draw.
 - Noise: no measurable difference.
-- My pick now is Elegoo's feet. The 6.5 -> 19 Hz result below was on a
-  different setup (floor slab on tennis balls) and did not hold here.
+- My pick now is Elegoo's feet. The 6.5 -> 19 Hz result below was measured
+  on 2026-09-30 with the slab on the floor on 12 half tennis balls; the printer
+  has moved since (new slab, 9 balls) and that result did not hold here.
 
 The original notes follow, kept for the record.
 
