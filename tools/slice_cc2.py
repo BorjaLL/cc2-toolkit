@@ -615,7 +615,7 @@ def main(argv=None, hooks=None):
         # only the CLI fixes: without curr_bed_type the CLI picks Cool Plate 35C
         proc_over = {"name": "CC2 stock", "curr_bed_type": QUALITY["curr_bed_type"]}
     else:
-        proc_over = {"name": f"CC2 PLA Quality ({a.accel})"}
+        proc_over = {"name": f"CC2 Quality ({a.accel})"}  # every filament, not only PLA
         proc_over.update(QUALITY)
         proc_over.update(ACCEL[a.accel])
     # Brim is set explicitly: the stock CC2 process leaves brim_type unset, so a
