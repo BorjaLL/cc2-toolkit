@@ -1,0 +1,233 @@
+{
+  "name": "PM-2",
+  "dict": "DICT_4X4_50",
+  "version": "v1",
+  "frame": "origin outer bottom-left corner of the C, x right, y up, z out of the printed top face; mm",
+  "size_mm": 240.0,
+  "thickness_mm": 3.0,
+  "rail_mm": 10.0,
+  "pad_mm": 31.0,
+  "marker_mm": 25.0,
+  "open_side": "right",
+  "centre_mm": [
+    120.0,
+    120.0
+  ],
+  "corner_order": "ArUco TL, TR, BR, BL of the upright marker image",
+  "markers": {
+    "20": {
+      "centre": [
+        15.5,
+        15.5
+      ],
+      "corners": [
+        [
+          3.0,
+          28.0
+        ],
+        [
+          28.0,
+          28.0
+        ],
+        [
+          28.0,
+          3.0
+        ],
+        [
+          3.0,
+          3.0
+        ]
+      ]
+    },
+    "21": {
+      "centre": [
+        120.0,
+        15.5
+      ],
+      "corners": [
+        [
+          107.5,
+          28.0
+        ],
+        [
+          132.5,
+          28.0
+        ],
+        [
+          132.5,
+          3.0
+        ],
+        [
+          107.5,
+          3.0
+        ]
+      ]
+    },
+    "22": {
+      "centre": [
+        224.5,
+        15.5
+      ],
+      "corners": [
+        [
+          212.0,
+          28.0
+        ],
+        [
+          237.0,
+          28.0
+        ],
+        [
+          237.0,
+          3.0
+        ],
+        [
+          212.0,
+          3.0
+        ]
+      ]
+    },
+    "23": {
+      "centre": [
+        224.5,
+        224.5
+      ],
+      "corners": [
+        [
+          212.0,
+          237.0
+        ],
+        [
+          237.0,
+          237.0
+        ],
+        [
+          237.0,
+          212.0
+        ],
+        [
+          212.0,
+          212.0
+        ]
+      ]
+    },
+    "24": {
+      "centre": [
+        120.0,
+        224.5
+      ],
+      "corners": [
+        [
+          107.5,
+          237.0
+        ],
+        [
+          132.5,
+          237.0
+        ],
+        [
+          132.5,
+          212.0
+        ],
+        [
+          107.5,
+          212.0
+        ]
+      ]
+    },
+    "25": {
+      "centre": [
+        15.5,
+        224.5
+      ],
+      "corners": [
+        [
+          3.0,
+          237.0
+        ],
+        [
+          28.0,
+          237.0
+        ],
+        [
+          28.0,
+          212.0
+        ],
+        [
+          3.0,
+          212.0
+        ]
+      ]
+    },
+    "26": {
+      "centre": [
+        15.5,
+        120.0
+      ],
+      "corners": [
+        [
+          3.0,
+          132.5
+        ],
+        [
+          28.0,
+          132.5
+        ],
+        [
+          28.0,
+          107.5
+        ],
+        [
+          3.0,
+          107.5
+        ]
+      ]
+    }
+  },
+  "rulers": [
+    {
+      "rail": "bottom",
+      "from_mm": 35.0,
+      "to_mm": 100.0,
+      "inner_edge": "y=10",
+      "numbers": "card-frame x in mm"
+    },
+    {
+      "rail": "top",
+      "from_mm": 35.0,
+      "to_mm": 100.0,
+      "inner_edge": "y=230",
+      "numbers": "card-frame x in mm"
+    },
+    {
+      "rail": "left",
+      "from_mm": 35.0,
+      "to_mm": 100.0,
+      "inner_edge": "x=10",
+      "numbers": "card-frame y in mm"
+    },
+    {
+      "rail": "bottom",
+      "from_mm": 140.0,
+      "to_mm": 205.0,
+      "inner_edge": "y=10",
+      "numbers": "card-frame x in mm"
+    },
+    {
+      "rail": "top",
+      "from_mm": 140.0,
+      "to_mm": 205.0,
+      "inner_edge": "y=230",
+      "numbers": "card-frame x in mm"
+    },
+    {
+      "rail": "left",
+      "from_mm": 140.0,
+      "to_mm": 205.0,
+      "inner_edge": "x=10",
+      "numbers": "card-frame y in mm"
+    }
+  ],
+  "label": "PM-2 240mm",
+  "note": "PLA shrinks ~0.3%: for best accuracy caliper the printed marker corners and pass them to tools/photo_measure.py --marker-positions (same 'markers' layout), or --board-scale 0.997."
+}

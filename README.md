@@ -62,6 +62,7 @@ Firmware 01.03.02.36 throughout.
 | `calibration/` | Printable tests with headless generators: temperature tower, YOLO flow, max volumetric speed, calibration card, ironing grid |
 | `filaments/` | Per-filament results template + worked results (Elegoo PLA, PLA Matte, PLA+, PLA-CF, PETG HF; DEEPLEE and SUNLU PLA+) |
 | `tools/` | Slice from the command line (quiet accel presets, adaptive layers), send and start over SSH, check G-code accel against your calibration |
+| `photo-measure/` | Read mm and camera angle from a phone photo of a printed ArUco card (PM-2) |
 | `examples/` | My measured numbers with full setup details |
 | `tests/` | Offline regression tests for `tools/` |
 
