@@ -551,6 +551,14 @@ class TestApi(unittest.TestCase):
                 self.assertTrue(hasattr(m, k), f"{m.__name__}.{k}")
         self.assertEqual(sc.API_VERSION, gc.API_VERSION)
 
+    def test_profile_paths_split_per_os(self):
+        """Profile paths are joined per OS, so a macOS/Linux ELEGOO_SLICER_DIR finds the files too."""
+        for p in [sc.MACHINE, *sc.PROCESS.values(), *sc.FILAMENT.values()]:
+            rel = os.path.relpath(p, sc.PROFILES).split(os.sep)
+            self.assertEqual(rel[0], "Elegoo", p)
+            self.assertEqual(len(rel), 4, p)
+            self.assertTrue(rel[-1].endswith(".json"), p)
+
 
 if __name__ == "__main__":
     unittest.main()

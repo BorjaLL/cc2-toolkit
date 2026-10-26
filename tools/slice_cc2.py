@@ -68,22 +68,27 @@ SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
 PROFILES = os.path.join(SLICER_DIR, "resources", "profiles")
 
+
+def _elegoo(*parts):
+    """A file under the Elegoo vendor profiles, joined per OS (also macOS/Linux checkouts)."""
+    return os.path.join(PROFILES, "Elegoo", *parts)
+
 # --- base profiles (by file) -------------------------------------------------
-MACHINE = os.path.join(PROFILES, r"Elegoo\machine\ECC2\Elegoo Centauri Carbon 2 0.4 nozzle.json")
+MACHINE = _elegoo("machine", "ECC2", "Elegoo Centauri Carbon 2 0.4 nozzle.json")
 PROCESS = {
-    "0.20": os.path.join(PROFILES, r"Elegoo\process\ECC2\0.20mm Standard @Elegoo CC2 0.4 nozzle.json"),
-    "0.12": os.path.join(PROFILES, r"Elegoo\process\ECC2\0.12mm Fine @Elegoo CC2 0.4 nozzle.json"),
+    "0.20": _elegoo("process", "ECC2", "0.20mm Standard @Elegoo CC2 0.4 nozzle.json"),
+    "0.12": _elegoo("process", "ECC2", "0.12mm Fine @Elegoo CC2 0.4 nozzle.json"),
 }
 FILAMENT = {
-    "pla":    os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA @ECC2.json"),
-    "plaplus": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA+ @ECC2.json"),
-    "plapro": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA PRO @ECC2.json"),
-    "plamatte": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PLA Matte @ECC2.json"),
+    "pla":    _elegoo("filament", "ECC2", "Elegoo PLA @ECC2.json"),
+    "plaplus": _elegoo("filament", "ECC2", "Elegoo PLA+ @ECC2.json"),
+    "plapro": _elegoo("filament", "ECC2", "Elegoo PLA PRO @ECC2.json"),
+    "plamatte": _elegoo("filament", "ECC2", "Elegoo PLA Matte @ECC2.json"),
     # stock Elegoo PETG HF (high flow; 240 C nozzle, flow 0.99, fan max 50%). NOT tuned or validated here.
-    "petghf": os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo PETG HF @ECC2.json"),
+    "petghf": _elegoo("filament", "ECC2", "Elegoo PETG HF @ECC2.json"),
     # stock Elegoo ASA / ABS (270 C nozzle, 90 C textured plate). NOT tuned or validated here.
-    "asa":    os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo ASA @ECC2.json"),
-    "abs":    os.path.join(PROFILES, r"Elegoo\filament\ECC2\Elegoo ABS @ECC2.json"),
+    "asa":    _elegoo("filament", "ECC2", "Elegoo ASA @ECC2.json"),
+    "abs":    _elegoo("filament", "ECC2", "Elegoo ABS @ECC2.json"),
 }
 
 # --- tuning overrides (see guides/tuning.md) ---------------------------------
