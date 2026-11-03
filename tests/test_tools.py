@@ -544,6 +544,43 @@ class TestStateLogRotation(unittest.TestCase):
         self.assertIn("cannot read", self.start({"elegoo.log": ""}))
 
 
+class TestColorTableBigFile(unittest.TestCase):
+    """color_table never greps a big G-code whole on the printer (a 215 MB start timed out)."""
+
+    def table(self, size, slot_map):
+        cmds = []
+
+        def run(c, cmd):
+            cmds.append(cmd)
+            if cmd.startswith("ls -ln"):
+                return f"{size}\n", ""
+            if "filament_colour" in cmd:
+                return "; filament_colour = #FFFFFF;#000000\n", ""
+            return "0\n1\n", ""
+        orig = snd.run
+        snd.run = run
+        try:
+            return snd.color_table(None, "/p/x.gcode", slot_map), cmds
+        finally:
+            snd.run = orig
+
+    def test_small_file_scanned_whole(self):
+        table, cmds = self.table(1000, {})
+        self.assertEqual(table, "CANVAS_SET_COLOR_TABLE T=0,1 CHANNEL=0,1 COLOR=0xffffff,0x0")
+        self.assertTrue(any(c.startswith("grep -o '^T[0-9]' ") for c in cmds), cmds)
+
+    def test_big_file_uses_slot_map_and_tail(self):
+        table, cmds = self.table(215_000_000, {0: 2, 1: 3})
+        self.assertEqual(table, "CANVAS_SET_COLOR_TABLE T=0,1 CHANNEL=1,2 COLOR=0xffffff,0x0")
+        self.assertFalse([c for c in cmds if c.startswith("grep")], cmds)
+        self.assertTrue(any(c.startswith("tail -c ") for c in cmds), cmds)
+
+    def test_big_file_no_map_reads_head_only(self):
+        table, cmds = self.table(215_000_000, {})
+        self.assertEqual(table, "CANVAS_SET_COLOR_TABLE T=0,1 CHANNEL=0,1 COLOR=0xffffff,0x0")
+        self.assertTrue(all(c.startswith(("ls -ln", "head -c", "tail -c")) for c in cmds), cmds)
+
+
 class TestApi(unittest.TestCase):
     def test_all_names_exist(self):
         for m in (sc, snd, load("thumbnail")):

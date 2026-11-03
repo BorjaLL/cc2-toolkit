@@ -244,13 +244,32 @@ def pty(c, lines):
     run(c, "; ".join(f"printf '%s\\n' {shlex.quote(l)} > /dev/pts/0; sleep 1" for l in lines))
 
 
+# A whole-file grep on the printer over a big G-code timed out a start (215 MB, 2026-10-23)
+# and starved the CC2's CPU (error 803). Above SCAN_MAX bytes only the head / tail are read.
+SCAN_MAX = 20_000_000
+HEAD_BYTES = 2_000_000
+TAIL_BYTES = 2_000_000
+
+
 def color_table(c, path, slot_map):
     """CANVAS_SET_COLOR_TABLE line mapping every tool the G-code uses (T0..T3) to a
     CANVAS slot: slot_map {tool: slot 1-4}, missing tools default to tool N -> slot N+1.
-    Colours come from the G-code's filament_colour line."""
+    Colours come from the G-code's filament_colour line (in the config block at the end).
+    Files over SCAN_MAX are never grepped whole on the printer: the tools come from a
+    non-empty slot_map, else from the first HEAD_BYTES; the colours from the last TAIL_BYTES."""
     q = shlex.quote(path)
-    tools = sorted({int(t) for t in run(c, f"grep -o '^T[0-9]' {q} | sort -u | tr -d T")[0].split()}) or [0]
-    cols = run(c, f"grep -m1 '^; filament_colour =' {q}")[0].split("=", 1)[-1].strip().split(";")
+    size = (run(c, f"ls -ln {q} 2>/dev/null | awk '{{print $5}}'")[0].split() or ["0"])[0]
+    small = size.isdigit() and int(size) <= SCAN_MAX
+    if small:
+        tools = sorted({int(t) for t in run(c, f"grep -o '^T[0-9]' {q} | sort -u | tr -d T")[0].split()}) or [0]
+    elif slot_map:
+        tools = sorted(int(t) for t in slot_map)
+    else:
+        tools = sorted({int(t) for t in run(
+            c, f"head -c {HEAD_BYTES} {q} | grep -o '^T[0-9]' | sort -u | tr -d T")[0].split()}) or [0]
+    grep_col = (f"grep -m1 '^; filament_colour =' {q}" if small
+                else f"tail -c {TAIL_BYTES} {q} | grep -m1 '^; filament_colour ='")
+    cols = run(c, grep_col)[0].split("=", 1)[-1].strip().split(";")
     chans, colours = [], []
     for t in tools:
         slot = slot_map.get(t, t + 1)
