@@ -10,6 +10,27 @@ Your printer, bench and filament differ from mine. The guides show you how to
 find **your** numbers; my results live in `examples/` as one worked example, not
 as recommended values.
 
+## What changed (2026-11)
+
+- **COSMOS:** the author moved the CC2 to COSMOS (OpenCentauri's Klipper OS)
+  on 2026-11-01. Motor currents ship as the CC1's, the Z baseline moves after
+  a mesh, and `TOOL=` picks the CANVAS lane; the `tools/` start and status
+  scripts are stock-firmware only (`guides/firmware-and-ssh.md`).
+- **Z offset on stock firmware:** a hidden -0.06 on every start and a screen
+  that shows a remembered value; plus = farther (`guides/gotchas.md` item 29).
+- **Pressure advance:** the G-code's value is the one that runs; the old
+  "skip the PA test" advice is withdrawn, with line-test results per filament
+  (`guides/tuning.md`).
+- **Wall streaks (open):** what was ruled out and what helped (one wall,
+  vase mode); outer-wall-first is the next test (`guides/tuning.md`).
+- **More gotchas:** PETG brims at gap 0 and supports at 0.2 weld, minimum
+  layer time changes wall speed per layer, TPU via the top-cover bypass, a
+  loose plug behind the power trips (items 28-33).
+- **Filaments:** SUNLU Rapid PETG record; Elegoo PETG HF rough tops traced
+  to the flow limit (`filaments/`).
+- **Tools:** `send_cc2.py` no longer greps a large G-code whole on the
+  printer to read the colour table.
+
 ## What changed (2026-10-17)
 
 - **Motor drivers:** X/Y StealthChop can be switched live from G-code with no
