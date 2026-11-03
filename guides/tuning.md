@@ -105,22 +105,31 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
 
 ## Don't bother / don't break
 
-- **Don't run the slicer Pressure Advance test; keep the stock value.**
-  Corrected 2026-09-21: the stock `Elegoo PLA @ECC2` preset ships
-  `enable_pressure_advance = 1`, `pressure_advance = 0.04`, and the G-code
-  sends `SET_PRESSURE_ADVANCE ADVANCE=0.04`. Elegoo's product page says the
-  printer's full calibration also tunes PA. Which value wins is unverified,
-  so leave each material preset's stock PA (plain PLA/PLA+ 0.04, PLA PRO and
-  PLA-CF 0.032, PETG 0.05, PETG PRO 0.1) and do not re-tune it per filament
-  until that is tested. Re-run the on-printer calibration after a
-  nozzle/hotend swap.
+- **Pressure advance: the G-code's value is the one that runs. [updated
+  2026-10-27]** The stock presets ship `pressure_advance` (plain PLA/PLA+
+  0.04, PLA PRO and PLA-CF 0.032, PETG 0.05, PETG PRO 0.1) and the start
+  sends `SET_PRESSURE_ADVANCE` once before layer 1. A
+  `SET_PRESSURE_ADVANCE ADVANCE=0.02` sent later showed up as
+  `pressure_advance: 0.020000` in `elegoo.log` (stock 01.03.02.36), so a
+  per-filament value in the slice or later in the file wins over the start
+  value. The earlier advice here ("skip the PA test, which value wins is
+  unverified") is withdrawn. The slicer has no CLI PA test; the author used
+  a headless line test (26 lines on layer 1, slow / fast / slow, one PA per
+  line) and read the most even lines from photos. Results on one printer,
+  provisional until confirmed on real parts: Elegoo PLA+ even at
+  0.048-0.052, DEEPLEE PLA+ 2.0 at 0.040-0.050, SUNLU Rapid PETG at
+  0.070-0.110 (stock 0.04-0.05). For the slow night profile the author runs
+  a higher PLA+ value (0.100), not yet checked by a scored print. On the
+  Snapmaker U1, a PA tower showed no link between PA and the wall streaks
+  below. Re-run the on-printer calibration after a nozzle/hotend swap.
 - **Firmware: stay on your delivered stock version; update only to fix a real
   problem.** The earlier note here said "No Klipper/SSH on the CC2". That was
   wrong: SSH works on stock firmware before 02.00.02.00 (the author's printer
-  runs OTA 01.03.02.36 and SSH works). What is true: 02.00.02.00 is reported
-  to remove SSH, and community firmware for the CC2 is alpha at best (a COSMOS
-  alpha was reported in 2026-10; not for daily use). Details and a per-version
-  table: `firmware-and-ssh.md`.
+  ran OTA 01.03.02.36 and SSH worked). What is true: 02.00.02.00 is reported
+  to remove SSH. COSMOS (OpenCentauri's Klipper OS) supports the CC2 since
+  26.10.0 and the author moved to it on 2026-11-01; it is a whole new stack
+  with its own Z, motor and CANVAS gotchas. Details and a per-version table:
+  `firmware-and-ssh.md`.
 - **Don't grease the carbon X-rods.** Grease + dust = abrasive paste = play =
   ringing "no software can fix." Clean with 99% IPA ~every 50 h.
 - **Clamping the magnetic toolhead cover** (rubber band, tape) does not stop
@@ -128,6 +137,44 @@ or split by color across plates + glue - a bigger win than tuning flush *volume*
 - **Stay on stock ElegooSlicer CC2 profiles** - they're CC2-tuned and well
   regarded for PLA. Community packs (Botmans, Willow) are optional starting
   points, not proven upgrades.
+
+## Open: uneven horizontal wall streaks (2026-11, not solved)
+
+The author's walls show irregular horizontal streaks under raking light on
+every print, every material and brand. They are partial-layer and local, not
+full Z bands. Zero visible lines under a harsh side light is not a realistic
+target for any FDM printer at 0.20-0.28 mm layers; the goal is lines you
+cannot see at arm's length and no lines tied to features.
+
+Ruled out on the CC2 (40 mm test cube, white PLA+, 0.28 mm, 40 mm/s walls,
+COSMOS firmware):
+- Filament diameter: the author measured the rolls; the streaks show on
+  every brand.
+- CANVAS spool drag: the same file with the spool on a free-spinning holder
+  streaked the same (handheld photos, so a small gain cannot be excluded).
+- Hotend temperature swing: stable within +-0.3 C during a streaked print.
+- Feature changes: the cube has constant layer content and still streaks.
+- XY axis (unlikely, not excluded): a tower rotated 90 degrees kept streaks
+  on all four faces.
+- Feet, placement and firmware: streaks on stock firmware and on COSMOS, and
+  before and after a move onto HULA II anti-vibration feet (2026-11-02; the
+  input shaper moved only 1-3 Hz on them, the best Z offset did not change).
+
+What moved it (printed, one cube each, judged from handheld photos):
+- Vase mode (one continuous wall): finer, more even lines; some streaks left.
+- One wall in normal mode (layer change, retraction and seam kept): close
+  to vase mode on three faces. So the layer change and seam are not the main
+  cause; the two-wall build is: the stock wall order prints the inner wall
+  first and the outer wall against it.
+- The same tests on a second printer (Snapmaker U1) gave the same answer:
+  one wall or outer wall first came out close to vase mode.
+
+Being tested next: 2 walls with `wall_sequence` outer wall/inner wall on the
+CC2 (sliced, not printed yet). Outer-first can hurt overhangs: check a 45
+degree overhang before making it a default. If it does not help: inner-wall
+line width and wall overlap. Score with fixed photos (phone on a stand, one
+lamp at a fixed low angle, part against a stop, three re-seated shots that
+agree) rather than handheld ones.
 
 ## Hardware / one-time
 
@@ -204,12 +251,11 @@ brand/type. OrcaSlicer wiki order:
 
 Wiki index: https://github.com/OrcaSlicer/OrcaSlicer/wiki/Calibration
 
-**CC2 note:** skip Pressure Advance (#3) and Input Shaping (#8) in the slicer.
-Input shaping is measured on the printer. PA: each stock preset sends its own
-PA (plain PLA 0.04) and the printer also tunes PA in its full calibration;
-which wins is unverified, so keep the preset's stock value (see "Don't bother /
-don't break" above). Practical per-filament sequence: **Temperature -> Flow
-Ratio -> Retraction -> Tolerance.** Tolerance (#6) is the lever for sliding-fit
+**CC2 note:** skip Input Shaping (#8) in the slicer: it is measured on the
+printer. PA (#3) is worth a line test per filament: the value in the G-code
+is the one that runs (see "Don't bother / don't break" above). Practical
+per-filament sequence: **Temperature -> Flow Ratio -> Retraction -> PA ->
+Tolerance.** Tolerance (#6) is the lever for sliding-fit
 prints (e.g. a puzzle with sliding wagons). In the slicer these are
 GUI-generated (it varies settings per band); `../calibration/` also has
 headless generators for the temperature tower, flow (YOLO), max volumetric

@@ -27,6 +27,7 @@ How to calibrate a new filament: `calibration/README.md`.
 | [SUNLU PLA+](sunlu-pla-plus.md) | `Elegoo PLA+ @ECC2` | 215 | 0.98 | 0.8 | 0.25 (hinge test) |
 | [Elegoo PLA-CF black](elegoo-pla-cf-black.md) | `Elegoo PLA-CF @ECC2` | | | | not calibrated |
 | [Elegoo PETG HF black](elegoo-petg-hf-black.md) | `Elegoo PETG HF @ECC2` | 240 | 1.00 | 0.8 | 0.4 (hinge test, provisional); rough tops open |
+| [SUNLU Rapid PETG matte black](sunlu-rapid-petg.md) | `Elegoo PETG HF @ECC2` | 240 | 1.00 | 0.8 | not tested |
 
 On four of these (PLA Matte, PLA+ black, DEEPLEE, SUNLU) the retraction
 tests strung only at 0.0 mm or not at all, so the stock 0.8 mm needed no

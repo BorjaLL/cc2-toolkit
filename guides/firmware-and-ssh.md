@@ -39,11 +39,9 @@ established for stock CC2 firmware (I did not find any).
 - Position of this repo: record the firmware you were delivered, get stock
   USB/LAN printing working, and update only to fix a demonstrated problem. If you
   want SSH, do not update past the last version that has it, and check first.
-- OpenCentauri patched firmware (v0.4.0) is **CC1 only**. For COSMOS (full
-  Klipper), a CC2 alpha was reported in the OpenCentauri community around
-  2026-10-10: it needs a 3.3 V USB-UART adapter for recovery and testers
-  report bugs. Not for daily use; not tried here. CC1 CANVAS support says
-  nothing about CC2.
+- OpenCentauri patched firmware (v0.4.0) is **CC1 only**. COSMOS (a full
+  Klipper OS) added the CC2 in release 26.10.0 (2026-10-30); the author
+  installed 26.10.1 on 2026-11-01. Findings: "COSMOS on the CC2" below.
 - Power-loss resume on 01.03.02.36: pausing on the screen, power-cycling and
   accepting the resume popup continued the print at the paused layer (one test,
   2026-10-07, about 90 s reheat). That is not a test of an unplanned power cut.
@@ -217,7 +215,73 @@ The part finished, but it came off the bed with no force at the end: every
 cool-down and reheat weakens adhesion, so recover soon or reprint. A Z trim
 sent while paused was undone by Resume; send it while printing. Repeated
 trips under load point at the supply: plug the printer straight into a wall
-socket, not a strip or extension lead.
+socket, not a strip or extension lead. On the author's printer the cause was
+a power plug that was not fully seated (found 2026-10-28).
+
+## COSMOS on the CC2 (2026-11-01 onward, one printer)
+
+COSMOS is OpenCentauri's replacement OS (Kalico/Klipper, Moonraker,
+Mainsail/Fluidd, Grumpyscreen on the touch screen). It replaces all of
+Elegoo's stack: everything above that reads `elegoo.log` or types into
+`/dev/pts/0`, and the scripts in `tools/` that do so (`send_cc2.py` start,
+status, levelling toggle), do not work on it. Slicing with `tools/slice_cc2.py`
+still works, but the stock start/end G-code is wrong for COSMOS (see below).
+The author's printer went from stock 01.03.02.36 to COSMOS 26.10.1.
+
+Install and way back (from the project's docs and a developer answer, not
+tried back by the author):
+- Install from a FAT32 USB stick through the screen's offline update, then
+  run the machine calibration. Flashing writes the printer's Elegoo cloud
+  credentials (`ELEGOO.txt`) to the stick: keep that file private; it is
+  needed to restore stock after a storage wipe.
+- Way back to stock: a button in the COSMOS screen GUI (COSMOS PR #455,
+  in 26.10.0+), which also flashes the toolhead and bed boards back. Updates
+  write the inactive A/B slot. The author also took a full eMMC image on
+  stock first.
+
+What the author measured or hit:
+- **Moonraker answered on port 80 (nginx); 7125 was closed** on this install.
+- **Motor currents are the CC1's (read with `DUMP_TMC`).** As shipped, X/Y
+  ran 0.994 A (stock Elegoo config 1.2 A), Z 0.795 (stock 1.0), E 0.696
+  (stock 0.8), and X/Y carry the CC1 chopper/CoolStep block. Issue #359 was
+  closed by PR #458 (Z/E autotune removed) with the currents unchanged; #387
+  reports the CC1 extruder under-extruding at 0.7 A. An override block with
+  the stock currents read back 1.179 A on X/Y; three `G28` in a row agreed
+  within one full step. A phone noise A/B on moves only (no print) had the
+  override 0.5-2 dB louder. The author caps accel at 5000 on COSMOS until a
+  print test of the override passes: every 20000-accel result in this repo was
+  on stock currents.
+- **Z baseline is new: re-measure.** Stock Z numbers (including the hidden
+  -0.06, `gotchas.md` item 29) do not carry over. The COSMOS
+  `BED_MESH_CALIBRATE` wrapper ends with `CALIBRATE_Z_OFFSET`, which moved
+  `position_endstop` from 6.244 to 6.042 after a 15x15 mesh and left the
+  first layer about 0.2 mm high (issue #462). A Z ladder after it picked
+  -0.20, and picked -0.20 again a day later after a move onto new feet.
+- **`PRINT_START` picks the CANVAS lane from `TOOL=`, not from the slot you
+  meant.** The COSMOS start G-code is `PRINT_START BED= EXTRUDER= CHAMBER=
+  TOOL=`; with CANVAS (AFC) present it runs `T{TOOL}`, and AFC maps
+  CANVAS_1..4 to T0..T3 by default. A single-colour slice is `TOOL=0`, so a
+  print meant for slot 3 came out in slot 1's green. Check the live lane map
+  (`AFC` status in Moonraker) and slice or edit the file so `TOOL=` and every
+  `T` line name the lane's tool, or remap it with `SET_MAP`.
+- **ElegooSlicer placeholder:** in COSMOS start G-code use
+  `[chamber_temperature]`; `[chamber_temperatures]` made every slice fail
+  (ElegooSlicer 1.5.3.5, exit -100).
+- **Input shaper on COSMOS** (on new feet, 2026-11-02): X zv 51.6 Hz, Y mzv
+  44.8 Hz, within 1-3 Hz of the stock-firmware numbers. Not saved: results
+  stay pending until `SAVE_CONFIG`.
+
+From the macro and Kalico source only (not hit on the printer):
+- `PRINT_START` cancels itself when the machine calibration, the `default`
+  bed mesh or the filament is missing. Wait past the heat-soak before
+  calling a start good.
+- Stock Elegoo start G-code on COSMOS can reach emergency-stop macros: slice
+  with the COSMOS start/end G-code (OpenCentauri publishes an OrcaSlicer
+  profile).
+- In Kalico, `stealthchop_threshold: 0` turns StealthChop ON (any value does);
+  leave the key out for SpreadCycle. In-file StealthChop switching
+  (`SET_TMC_FIELD ... en_spreadcycle VALUE=0`) for quiet nights is written but
+  not yet run overnight on COSMOS.
 
 ## Network notes
 

@@ -197,4 +197,42 @@ first two items are corrections to advice I found elsewhere.
     alone did not fix rough PETG tops (`../filaments/elegoo-petg-hf-black.md`).
 28. **Power cut: do not press the screen's Resume.** It does not measure Z
     again and printed in mid-air after a second trip. Cancel and recover from
-    the layer instead: `firmware-and-ssh.md`.
+    the layer instead: `firmware-and-ssh.md`. The author's trips turned out
+    to be a power plug that was not fully seated, not a printer or PSU fault
+    (found 2026-10-28): check the plug first.
+
+## Later finds (2026-10-18 to 2026-11-03)
+
+29. **Stock Z offset: a hidden -0.06 and a screen that shows the wrong number
+    (measured, stock 01.03.02.36).** Every start on the author's printer logged
+    `bed_roughness_offset:-0.06` in `elegoo.log` on top of the G-code and screen
+    offsets; the screen does not show it. So a slice with `z_offset` 0 printed
+    0.06 mm closer than sliced. Sign check (2026-10-18, idle at Z10): a trim of
+    +0.04 moved the toolhead Z from 10.108 to 10.148, so plus = nozzle farther,
+    the same as the slicer key. The screen shows its own last tapped value
+    since the GUI started, not the printer's live offset (it read +0.04 over a
+    real 0 on 2026-10-29), and tapping it re-applies that remembered value.
+    What worked: Z ladders (one pad per offset, printed side by side) on white
+    PLA+ and on PETG HF both picked a net +0.06 baked into the slice, with the
+    screen at 0. Your hidden offset and best value can differ: read your
+    `elegoo.log` start lines and print a ladder.
+30. **PETG brims with gap 0 fuse to the part (printed, 2026-10-31).** A 3 mm
+    brim at gap 0 on SUNLU Rapid PETG welded to the parts and left a rough
+    edge. A 0.3 mm brim gap (`--proc brim_object_gap=0.3`) is the author's
+    default since (no A/B print of the two gaps).
+31. **PETG supports weld at a 0.2 mm gap (printed, 2026-10-19).** PETG
+    supports under a PETG part at the stock `support_top_z_distance` 0.2 with
+    2 interface layers could not be removed. At 0.2 mm layers the slicer rounds
+    the gap to whole layers (item 14), so ask for 0.3 and get 0.4; a ledge at
+    0.4 peeled off whole. Or print the interface in PLA.
+32. **Minimum layer time changes the outer-wall speed layer by layer
+    (software check, 2026-11-03).** On a small Orca-sliced test plate, once the
+    short parts ended the 6 s minimum layer time took over and the outer-wall
+    speed changed almost every layer (160 down to 20 mm/s, steps over 25% at
+    about 11 heights). Each step is a candidate for a visible band. Check the
+    G-code's outer-wall feedrate per layer before blaming the printer for
+    bands on a part that prints alone at the top of a plate (see also item 6).
+33. **TPU goes through the top-cover bypass, not the CANVAS (printed,
+    2026-10).** Elegoo's wiki route: CANVAS unplugged, filament hand-fed
+    through a printed top-cover TPU adapter, stock `Elegoo TPU 95A @ECC2`
+    preset (225 C). Parts printed fine at stock flow; no TPU calibration done.

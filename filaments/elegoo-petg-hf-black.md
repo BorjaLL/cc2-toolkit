@@ -48,3 +48,12 @@ Slice with:
   about 17 mm3/s at 0.42 x 0.2 mm, close to the preset's 18 mm3/s limit, so
   slower tops are the next thing to try; also check the nozzle is clean (a
   white PLA control bar on the same plate).
+- 2026-10-19 max volumetric speed tower 10-24 mm3/s at 240 C: first wall
+  defects at 4-5 mm up = about 12.7-13.3 mm3/s, far below the preset's 18.
+  Four 50 x 50 mm top-surface squares sliced with the preset's 18 were all
+  rough; the same square with only `filament_max_volumetric_speed` set to
+  **10** looked clean in photos (one print). So the rough tops were the flow
+  limit, not top flow ratio or pattern. Provisional: a high-flow PETG this
+  low suggests a partial clog on the author's hotend (a clog was seen days
+  before); a cold pull and a repeat tower are still to do. Your limit may be
+  well above 10.
