@@ -35,6 +35,7 @@ Slicer location: C:/Program Files/ElegooSlicer by default; set ELEGOO_SLICER_DIR
 to the install folder if yours is elsewhere.
 """
 import json, os, sys, glob, argparse, subprocess, shutil, re
+from collections.abc import Mapping
 
 
 def _sibling(name):
@@ -63,12 +64,114 @@ __all__ = ["TOOLKIT_VERSION", "API_VERSION", "SLICER_DIR", "EXE", "PROFILES", "M
            "STOCK_PLA_EXPECT", "DESIGNER_KEYS", "TALL_RATIO", "TALL_MIN_H",
            "EXIT_OK", "EXIT_ERROR", "EXIT_USAGE", "EXIT_REFUSED", "EXIT_SLICER_FAILED",
            "EXIT_NO_OUTPUT", "RESULT_FILE", "SLICER_EXIT_HINTS", "slicer_exit_hint", "resolve_leaf", "flatten", "verify_stock",
+           "SLICER_EXE_ENV", "ENGINE", "ENGINE_LIBS", "ENGINE_EXIT_HINTS", "engine_identity", "engine_stamp",
+           "generated_by", "stamp_engine",
            "designer_setting", "slot_colours", "preflight_3mf", "adaptive_models", "move_to_name",
            "send_to_printer", "main"]
 
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
 PROFILES = os.path.join(SLICER_DIR, "resources", "profiles")
+
+# --- slicer engine (bd_3d-printing-whkq3.6) ------------------------------------
+# CC2_SLICER_EXE unset (the default): the ElegooSlicer fork above slices, argv and outputs as
+# before, no engine record anywhere. Set to another slicer exe (upstream OrcaSlicer 2.5.1:
+# C:/Program Files/OrcaSlicer/orca-slicer.exe): that exe slices the SAME flattened profiles
+# (still read from ELEGOO_SLICER_DIR), with a throwaway --datadir and the per-engine enum
+# spellings (designer_settings.ENGINE_ENUMS); its identity goes into slice_result.json
+# ("engine") and one '; cc2_engine = ' G-code line. The env is read ONCE, at import: a day
+# and a night twin sliced by one process can never get different engines.
+SLICER_EXE_ENV = "CC2_SLICER_EXE"
+_ENGINE_EXE = os.environ.get(SLICER_EXE_ENV) or None
+# The engine is told by the slicer library next to the exe (the launcher exe alone says little:
+# orca-slicer.exe 2.5.1 has an empty version resource).
+ENGINE_LIBS = {"ElegooSlicer.dll": "fork", "OrcaSlicer.dll": "orca"}
+_ENGINE_VERSION_RE = {"fork": rb"ElegooSlicer/(\d+\.\d+\.\d+(?:\.\d+)?)",
+                      "orca": rb"OrcaSlicer/(\d+\.\d+\.\d+(?:[-.][0-9A-Za-z]+)*)"}
+_sha_cache = {}
+
+
+def _file_facts(path, pattern=None):
+    """(sha256 hex, the one distinct `pattern` match or None) of a file, read once and cached
+    in this process by path + size + mtime. Missing file: (None, None)."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None, None
+    key = (os.path.abspath(path), st.st_size, st.st_mtime_ns, pattern)
+    if key not in _sha_cache:
+        import hashlib
+        h, found, tail = hashlib.sha256(), set(), b""
+        rx = re.compile(pattern) if pattern else None
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 22), b""):
+                h.update(chunk)
+                if rx:
+                    buf = tail + chunk
+                    found.update(m.group(1) for m in rx.finditer(buf))
+                    tail = buf[-64:]
+        _sha_cache[key] = (h.hexdigest(), found.pop().decode() if len(found) == 1 else None)
+    return _sha_cache[key]
+
+
+def engine_identity(exe=None):
+    """Immutable identity of a slicer exe (default: the fork EXE): engine 'fork' | 'orca' |
+    'unknown' (from the library next to it), exe and library paths with full sha256, and
+    the version the library names (None when absent or ambiguous)."""
+    import types
+    source = "ELEGOO_SLICER_DIR" if not exe else SLICER_EXE_ENV if exe == _ENGINE_EXE else "argument"
+    exe = exe or EXE
+    folder = os.path.dirname(os.path.abspath(exe))
+    lib, engine = None, "unknown"
+    for name, kind in ENGINE_LIBS.items():
+        if os.path.isfile(os.path.join(folder, name)):
+            lib, engine = os.path.join(folder, name), kind
+            break
+    lib_sha, version = _file_facts(lib, _ENGINE_VERSION_RE.get(engine)) if lib else (None, None)
+    return types.MappingProxyType({
+        "engine": engine, "exe": os.path.abspath(exe), "exe_sha256": _file_facts(exe)[0],
+        "lib": lib, "lib_sha256": lib_sha, "version": version,
+        "source": source})
+
+
+class FrozenEngine(Mapping):
+    """The engine of this process, fixed at import (CC2_SLICER_EXE or the fork EXE). Hashing a
+    150 MB library is deferred to the first read, so importing stays cheap; after that every
+    read returns the same values. selected: True when CC2_SLICER_EXE chose the exe."""
+
+    def __init__(self, exe=None):
+        self.selected = exe is not None
+        self.requested_exe = self._exe = exe
+        self._d = None
+
+    def _data(self):
+        if self._d is None:
+            self._d = engine_identity(self._exe)
+        return self._d
+
+    def __getitem__(self, k):
+        return self._data()[k]
+
+    def __iter__(self):
+        return iter(self._data())
+
+    def __len__(self):
+        return len(self._data())
+
+    def __repr__(self):
+        return f"FrozenEngine({dict(self._data())!r})" if self._d else f"FrozenEngine(exe={self._exe!r})"
+
+    def stamp(self):
+        return engine_stamp(self)
+
+
+def engine_stamp(identity):
+    """The G-code comment line of an engine identity ('; cc2_engine = orca 2.5.1 <exe sha256[:12]>')."""
+    return (f"; cc2_engine = {identity['engine']} {identity['version'] or 'unknown'} "
+            f"{(identity['exe_sha256'] or 'missing')[:12]}\n")
+
+
+ENGINE = FrozenEngine(_ENGINE_EXE)
 
 
 def _elegoo(*parts):
@@ -592,7 +695,15 @@ def main(argv=None, hooks=None):
         ap.error("--pure-stock cannot be combined with --accel " + a.accel)
     # Check the install BEFORE doing any work or creating output folders.
     need = [MACHINE, PROCESS[a.layer], FILAMENT[a.filament], VENDOR]
-    if not (a.dry_run or a.verify):
+    engine = ENGINE if ENGINE.selected else None   # None: the fork EXE, exactly as before
+    if engine is not None and not (a.dry_run or a.verify):
+        if not os.path.isfile(engine.requested_exe):
+            sys.exit(f"not found: {engine.requested_exe} ({SLICER_EXE_ENV}). Unset it to slice with "
+                     f"ElegooSlicer ({EXE}).")
+        if engine["engine"] not in ENGINE_LIBS.values():
+            sys.exit(f"{SLICER_EXE_ENV}={engine.requested_exe}: no {' or '.join(ENGINE_LIBS)} next to it, so "
+                     "the slicer engine is unknown; point it at an ElegooSlicer or OrcaSlicer install")
+    if not (a.dry_run or a.verify) and engine is None:
         need.insert(0, EXE)
     for p in need:
         if not os.path.exists(p):
@@ -825,6 +936,25 @@ def main(argv=None, hooks=None):
     refusal = designer.label_crash(dict(source, **p_merged))
     if refusal:
         sys.exit(refusal)
+    engine_record, datadir = None, None
+    if engine is not None:
+        # Same flat files, in the engine's own spellings (the one place they are changed);
+        # upstream gets a throwaway --datadir, never the user's %APPDATA%/OrcaSlicer.
+        mapped = []
+        for path in dict.fromkeys([fm, fp] + slot_files):
+            with open(path, encoding="utf-8") as f:
+                prof = json.load(f)
+            prof, changes = designer.engine_values(prof, engine["engine"])
+            if changes:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(prof, f, indent=1)
+                mapped += [{"file": os.path.basename(path), "key": k, "from": o, "to": n}
+                           for k, o, n in changes]
+        for m in mapped:
+            print(f"engine {engine['engine']}: {m['file']} {m['key']} {m['from']!r} -> {m['to']!r}")
+        engine_record = dict(engine, enum_mapped=mapped)
+        print(f"engine: {engine['engine']} {engine['version'] or '(version unknown)'} {engine['exe']} "
+              f"sha256 {(engine['exe_sha256'] or '')[:12]} (from {SLICER_EXE_ENV})")
     if a.dry_run:
         print("dry-run: profiles written to", work)
         return
@@ -832,8 +962,13 @@ def main(argv=None, hooks=None):
     # ElegooSlicer/OrcaSlicer CLI: settings are ';'-joined; --slice 0 = all plates, N = plate N.
     # --allow-newer-file: Bambu Studio 2.x 3MFs are "newer" than this Orca fork
     # and fail with exit -24 (silent) without it (2026-09-25).
-    cmd = [EXE, "--allow-newer-file",
-           "--load-settings", f"{fm};{fp}",
+    cmd = [engine["exe"] if engine is not None else EXE]
+    if engine is not None and engine["engine"] == "orca":
+        import tempfile
+        datadir = tempfile.mkdtemp(prefix="cc2-orca-datadir-")
+        cmd += ["--datadir", datadir]
+    cmd += ["--allow-newer-file",
+            "--load-settings", f"{fm};{fp}",
            "--load-filaments", ";".join(slot_files),
            "--slice", str(a.plate)]
     # --arrange 0 is passed explicitly: with no --arrange at all the CLI still packs
@@ -854,9 +989,15 @@ def main(argv=None, hooks=None):
     result = new_result(a, log)
     if adaptive is not None:
         result["adaptive"] = adaptive
+    if engine_record is not None:
+        result["engine"] = engine_record
     print("slicing ->", a.out)
-    with open(log, "w", encoding="utf-8") as lf:
-        rc = subprocess.call(cmd, stdout=lf, stderr=subprocess.STDOUT)
+    try:
+        with open(log, "w", encoding="utf-8") as lf:
+            rc = subprocess.call(cmd, stdout=lf, stderr=subprocess.STDOUT)
+    finally:
+        if datadir:
+            shutil.rmtree(datadir, ignore_errors=True)
     print("exit", rc, "| log:", log)  # the slicer's own code; tools parse this line
     result["slicer_exit"] = rc
     result["slicer_exit_signed"] = rc - (1 << 32) if rc >= (1 << 31) else rc
@@ -865,7 +1006,10 @@ def main(argv=None, hooks=None):
         shutil.rmtree(run_dir, ignore_errors=True)  # nothing of a failed run is post-processed
         print("gcode: (none - slicer failed, check slice.log)")
         result["diagnostics"] = log_diagnostics(log)
-        hint = slicer_exit_hint(result["slicer_exit_signed"], a.no_arrange)
+        if engine is None:
+            hint = slicer_exit_hint(result["slicer_exit_signed"], a.no_arrange)
+        else:
+            hint = slicer_exit_hint(result["slicer_exit_signed"], a.no_arrange, engine["engine"])
         with open(log, encoding="utf-8", errors="replace") as lf:
             label_stop = "Unknown label object id" in lf.read()
         if label_stop:
@@ -893,6 +1037,19 @@ def main(argv=None, hooks=None):
         print(f"note: {len(stale)} older .gcode file(s) in --out are not from this run and were "
               f"ignored: {', '.join(stale[:3])}{' ...' if len(stale) > 3 else ''}")
     print("gcode:", gcodes)
+    if engine is not None:
+        # The bytes must come from the engine the record names (never fork bytes labelled orca).
+        made_by = {os.path.basename(g): generated_by(g) for g in gcodes}
+        engine_record["generated_by"] = sorted({f"{n} {v}" for n, v in made_by.values() if n})
+        want = {"orca": "OrcaSlicer", "fork": "ElegooSlicer"}[engine["engine"]]
+        bad = {f: nv for f, nv in made_by.items()
+               if nv[0] != want or (engine["version"] and nv[1] != engine["version"])}
+        if bad:
+            for g in gcodes:
+                os.remove(g)
+            finish_result(a, result, "engine_mismatch", EXIT_ERROR, message=(
+                f"{SLICER_EXE_ENV}: expected G-code from {want} {engine['version']}, got "
+                + ", ".join(f"{f}: {n} {v}" for f, (n, v) in sorted(bad.items())) + "; G-code removed"))
     stripped = {}
     for g in gcodes:
         with open(g, encoding="utf-8", newline="") as f:
@@ -923,11 +1080,21 @@ def main(argv=None, hooks=None):
         plates = move_to_name(a, plates, a.out)
     audit_paths = {}
     for g, plate in plates:
-        audit = designer.report(g, original_models, replacement_reasons, m_merged, f_merged,
-                                prepared=models, plate=None if a.more else (a.plate or plate))
+        if engine is None:
+            audit = designer.report(g, original_models, replacement_reasons, m_merged, f_merged,
+                                    prepared=models, plate=None if a.more else (a.plate or plate))
+        else:
+            audit = designer.report(g, original_models, replacement_reasons, m_merged, f_merged,
+                                    prepared=models, plate=None if a.more else (a.plate or plate),
+                                    engine=engine["engine"])
         audit_paths[plate] = g + '.designer.json'
         a.checks.append({'check': 'designer_settings', 'file': g, 'ok': True,
                          'designer_replacements': audit['designer_replacements']})
+    if engine is not None:
+        # After the designer line (report rewrites line 1), before the wrapper's finish hook
+        # hashes or stamps the file: the engine line is part of the bytes it records.
+        for g, _ in plates:
+            stamp_engine(g, engine)
     if _hook(hooks, "finish"):
         try:
             plates = hooks.finish(a, plates, rc)
@@ -984,12 +1151,56 @@ SLICER_EXIT_HINTS = {
 }
 
 
-def slicer_exit_hint(code, no_arrange=False):
-    """One-line meaning of a slicer exit code, or None."""
-    hint = SLICER_EXIT_HINTS.get(code)
+# Upstream OrcaSlicer (CC2_SLICER_EXE): the same CLI error table as the fork (both are Orca
+# code), plus -5. Provoked on 2.5.1 with the flat CC2 card profiles (ENGINE_EXIT_PROVEN):
+# -50 part off the bed with --arrange 0, and a 3x card with --arrange 1 (both engines;
+# no -21 there); -17 process compatible_printers naming another printer (both engines);
+# -5 a process 'inherits' upstream cannot resolve ("Preset was not found in the loaded
+# bundle"; the fork slices that file with exit 0). Every other code is assumed to mean the
+# same as on the fork, not provoked; the 0xC0000005 hint is fork-specific (ElegooSlicer
+# filament_colour crash) and is not reused.
+ENGINE_EXIT_HINTS = {
+    "fork": SLICER_EXIT_HINTS,
+    "orca": {**{k: v for k, v in SLICER_EXIT_HINTS.items() if k != -1073741819},
+             -5: "profile not accepted: an 'inherits' preset upstream OrcaSlicer cannot resolve "
+                 "(it reads no vendor tree here); load flattened profiles with no 'inherits'"},
+}
+ENGINE_EXIT_PROVEN = {"orca": (-5, -17, -50)}
+
+
+def slicer_exit_hint(code, no_arrange=False, engine="fork"):
+    """One-line meaning of a slicer exit code, or None. engine: 'fork' (ElegooSlicer, the
+    default) or 'orca' (upstream OrcaSlicer, CC2_SLICER_EXE); an unproven orca code says so."""
+    hint = ENGINE_EXIT_HINTS.get(engine, SLICER_EXIT_HINTS).get(code)
     if hint and no_arrange and code in (-21, -50):
         hint += " (already --no-arrange: move the part in the model itself)"
+    if hint and engine != "fork" and code not in ENGINE_EXIT_PROVEN.get(engine, ()):
+        hint += f" (meaning as on ElegooSlicer, not yet seen on {engine})"
     return hint
+
+
+def generated_by(path):
+    """(slicer name, version) from a G-code's '; generated by NAME VERSION on ...' header
+    line (first 20 lines), else (None, None)."""
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for _, line in zip(range(20), f):
+            m = re.match(r";\s*generated by (\S+) (\S+)", line)
+            if m:
+                return m.group(1), m.group(2)
+    return None, None
+
+
+def stamp_engine(path, engine):
+    """Write the engine line ('; cc2_engine = orca 2.5.1 <sha12>') once, after the designer
+    line when there is one (so a re-stamp replaces it, never adds a second)."""
+    with open(path, encoding="utf-8", newline="") as f:
+        lines = [l for l in f if not l.startswith("; cc2_engine = ")]
+    at = 1 if lines and lines[0].startswith("; designer_replacements = ") else 0
+    lines.insert(at, engine_stamp(engine))
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.writelines(lines)
+
+
 RESULT_FILE = "slice_result.json"
 
 
