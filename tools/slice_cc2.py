@@ -729,6 +729,13 @@ def main(argv=None, hooks=None):
         if (str(source.get('ooze_prevention')) == '1' and 'ooze_prevention' not in kept
                 and 'ooze_prevention' not in policy):
             p_merged['ooze_prevention'] = '0'
+        # A Bambu-only key designer.process translated (bd_3d-printing-typ94) must not stay
+        # under its Bambu name too: the flat Elegoo profile carries several (top_one_wall_type,
+        # ironing_direction, prime_tower_rib_wall ...) after their destination keys, and the
+        # CLI loader renames them in file order, so they would overwrite the translation.
+        for key in designer.withheld(source, 'cc2'):
+            if key not in policy:
+                p_merged.pop(key, None)
         with open(fp, 'w', encoding='utf-8') as f:
             json.dump(p_merged, f, indent=1)
     replacement_reasons = {k: 'selected acceleration/noise profile' for k in ACCEL[a.accel]}

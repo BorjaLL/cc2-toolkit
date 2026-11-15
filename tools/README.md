@@ -98,8 +98,11 @@ Explicit options, selected acceleration/noise profile and wrapper safety/finish 
 still win; `--pure-stock` deliberately retains the stock process. Machine and calibrated
 filament settings come from the destination profiles. The `.designer.json` beside each
 G-code compares every global source key with its output config, plus scoped settings
-with the prepared model. Replacements (including unsupported/unverified output keys)
-are embedded in the G-code and `slice_result.json` checks as `designer_replacements`.
+with the prepared model. BambuStudio-only process keys the slicer does not define are
+translated first (`designer_settings.translate`: ironing_direction, top_one_wall_type,
+sparse_infill_anchor, prime_tower_rib_*, ...; the Bambu key is withheld so the CLI loader
+cannot re-translate it) and audited as `mapped`; the rest carry a per-family reason.
+Replacements are embedded in the G-code and `slice_result.json` checks as `designer_replacements`.
 Each row includes the key, source value, output value and reason. Object/layer rows
 explicitly distinguish prepared-input evidence from output-toolpath evidence.
 
