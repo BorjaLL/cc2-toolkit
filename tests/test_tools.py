@@ -261,7 +261,9 @@ class TestSliceOutputs(unittest.TestCase):
         self.assertEqual(code, sc.EXIT_REFUSED)
         r = self.result()
         self.assertEqual(r["status"], "refused")
-        self.assertEqual(r["checks"], [{"check": "policy", "ok": False}])
+        self.assertIn({"check": "policy", "ok": False}, r["checks"])
+        self.assertEqual([c['designer_replacements'] for c in r['checks']
+                          if c['check'] == 'designer_settings'], [[]])
 
     def test_name_rename_does_not_touch_stale(self):
         with FakeSlicer(self.d, plates=2):

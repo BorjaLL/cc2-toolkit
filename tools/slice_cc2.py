@@ -22,8 +22,9 @@ read them; pass them explicitly). Example, emoji PLA:
 Defaults: PLA PRO filament, 0.20mm layer, stock accel. NOTE: --accel stock only
 leaves ACCELERATION at the Elegoo profile value. The author's quality overrides
 (QUALITY below: cubic infill, monotonic top, 5 top layers, Textured
-PEI, solid_infill_direction=0, auto_brim) and the 55 C PLA-family bed are ALWAYS
-applied. Pass --pure-stock to skip all of them (process, filament, bed temp) and
+PEI, solid_infill_direction=0, auto_brim) supply defaults; designer process values
+take precedence before explicit recipe and motion policy. The 55 C PLA-family bed
+is a destination filament default. Pass --pure-stock to skip tuning and designer process values and
 slice with the flattened stock Elegoo profiles only. What remains with
 --pure-stock: the curr_bed_type=Textured PEI Plate and brim_type CLI fixes, M600
 stripping, and anything you pass explicitly (--temp, --bed, --proc, --fil ...).
@@ -51,6 +52,7 @@ def _sibling(name):
 
 
 gcode_util = _sibling("cc2_gcode")
+designer = _sibling("designer_settings")
 TOOLKIT_VERSION = gcode_util.TOOLKIT_VERSION
 API_VERSION = gcode_util.API_VERSION
 
@@ -315,14 +317,14 @@ def preflight_3mf(path, proc):
     except ValueError:
         proj = {}
     diffs = []
-    for k in DESIGNER_KEYS:
+    for k in sorted(set(proj) & set(proc)):
         if k in proj:
             used = proc.get(k, proj[k])   # keys the tool leaves unset fall back to the 3MF
             if str(used) != str(proj[k]):
                 diffs.append(f"{k}: 3MF {proj[k]} -> used {used}")
     if diffs:
-        print("preflight: designer settings REPLACED by the CC2 profile "
-              "(add --proc KEY=VALUE to keep one):")
+        print("preflight: designer settings REPLACED by destination policy or explicit recipe "
+              "(final values and reasons: G-code .designer.json):")
         for d in diffs:
             print("   ", d)
     # 2. per-object overrides (these ARE honoured by the CLI) + plate membership
@@ -497,7 +499,7 @@ def main(argv=None, hooks=None):
                          "thin PLA parts. Sets both textured_plate_temp and "
                          "hot_plate_temp (+ their initial-layer variants).")
     ap.add_argument("--supports", action="store_true",
-                    help="enable normal(auto) supports on build plate only, 25deg "
+                    help="enable supports; retain designer type and threshold when present, otherwise normal(auto), 25deg "
                          "threshold (needed for overhang models). "
                          "Tune further with --proc support_* keys.")
     ap.add_argument("--proc", action="append", default=[], metavar="KEY=VALUE",
@@ -608,6 +610,10 @@ def main(argv=None, hooks=None):
         sys.exit(f"--slots {a.slots}: must be 1..4 (the CANVAS has 4 slots)")
     if a.thumbnail and not a.dry_run and not _sibling("thumbnail").have_pillow():
         sys.exit("--thumbnail: " + _sibling("thumbnail").PILLOW_HINT)
+    original_models = [a.model] + list(a.more)
+    explicit_proc = {s.partition('=')[0].strip() for s in a.proc}
+    explicit_layer = any(x == '--layer' or x.startswith('--layer=') for x in
+                         (argv if argv is not None else sys.argv[1:]))
     if _hook(hooks, "prepare"):
         hooks.prepare(a)
     if a.out is None:
@@ -677,6 +683,42 @@ def main(argv=None, hooks=None):
     m_merged = flatten(MACHINE, "machine", None, fm)
     p_merged = flatten(PROCESS[a.layer], "process", proc_over, fp)
     f_merged = flatten(FILAMENT[a.filament], "filament", fil_over, ff)
+    # Flattening is required by the CLI, but stock defaults are not model choices.
+    source = designer.read(a.model)
+    kept = designer.process(source, m_merged, f_merged)
+    if not a.pure_stock:
+        p_merged.update(kept)
+        # Noise/acceleration profiles, explicit choices and wrapper policies win.
+        policy = dict(ACCEL[a.accel])
+        policy['curr_bed_type'] = QUALITY['curr_bed_type']
+        if a.no_brim:
+            policy['brim_type'] = 'no_brim'
+        if explicit_layer:
+            policy['layer_height'] = str(float(a.layer))
+        if a.supports:
+            policy['enable_support'] = '1'
+        if a.iron or a.no_iron:
+            policy['ironing_type'] = iron
+        # As before, --proc is last: a lock's layer_height beats --layer,
+        # and --proc enable_support=0 beats the convenience --supports flag.
+        policy.update({s.partition('=')[0].strip(): s.partition('=')[2].strip() for s in a.proc})
+        p_merged.update(policy)
+        # Some invalid Bambu values are absent from the Elegoo process, so
+        # omission alone would allow them to leak back from the original 3MF.
+        for key in designer.NEG_AUTO:
+            if str(source.get(key)) == '-1' and key not in p_merged:
+                p_merged[key] = '2' if key == 'raft_first_layer_expansion' else '0'
+        with open(fp, 'w', encoding='utf-8') as f:
+            json.dump(p_merged, f, indent=1)
+    replacement_reasons = {k: 'selected acceleration/noise profile' for k in ACCEL[a.accel]}
+    replacement_reasons.update({s.partition('=')[0].strip():
+        ('explicit recipe setting or geometry lock' if s.partition('=')[0].strip() in explicit_proc
+         else 'destination finish, motion or safety policy') for s in a.proc})
+    replacement_reasons.update(getattr(a, '_designer_reasons', {}))
+    for key, active in [('enable_support', a.supports), ('brim_type', a.no_brim),
+                        ('layer_height', explicit_layer), ('ironing_type', a.iron or a.no_iron)]:
+        if active and key not in {s.partition('=')[0].strip() for s in a.proc}:
+            replacement_reasons[key] = 'explicit command-line choice'
     print("flat_machine :", len(m_merged), "keys")
     print("flat_process :", len(p_merged), "keys",
           "(pure stock Elegoo)" if a.pure_stock else
@@ -817,12 +859,25 @@ def main(argv=None, hooks=None):
         result["outputs"].append({"plate": plate, "path": g, "m600_stripped": stripped.get(os.path.basename(g), 0)})
     if a.name:
         plates = move_to_name(a, plates, a.out)
+    audit_paths = {}
+    for g, plate in plates:
+        audit = designer.report(g, original_models, replacement_reasons, m_merged, f_merged,
+                                prepared=models)
+        audit_paths[plate] = g + '.designer.json'
+        a.checks.append({'check': 'designer_settings', 'file': g, 'ok': True,
+                         'designer_replacements': audit['designer_replacements']})
     if _hook(hooks, "finish"):
         try:
             plates = hooks.finish(a, plates, rc)
         except SystemExit as e:  # a wrapper policy refused the output (e.g. exit 3)
             set_outputs(result, plates_after_refusal(result))
             finish_result(a, result, "refused", _exit_code(e), message=_exit_message(e))
+    # Keep the audit beside a wrapper-renamed output without changing bytes
+    # after its cache/manifest checks have recorded the G-code hash.
+    for g, plate in plates:
+        src = audit_paths.get(plate)
+        if src and os.path.abspath(src) != os.path.abspath(g + '.designer.json'):
+            shutil.copyfile(src, g + '.designer.json')
     set_outputs(result, plates)
     if a.send is not None and plates:
         try:

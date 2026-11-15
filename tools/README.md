@@ -81,7 +81,7 @@ path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
 | `--slot-filament N=KIND[:TEMP[:FLOW]]` | none | a different filament in slot N |
 | `--slots N` (alias `--slot-count N`) | `1` | a count: load the filament into the first N slicer slots, i.e. tools T0..T(N-1) (needed when a 3MF uses slots above 1). The physical CANVAS slot per tool is picked at start (`slot_map`), not here |
 | `--plate N` | `0` (all) | slice one plate of a multi-plate 3MF |
-| `--supports` | off | normal(auto) supports, build plate only, 25 degree threshold |
+| `--supports` | off | enables supports, retaining designer type/threshold/gaps; without designer values: normal(auto), build plate only, 25 degrees |
 | `--iron top\|topmost\|solid` | the designer's | iron although the model does not ask for it (default: the 3MF's `ironing_type`; STL input = no ironing) |
 | `--no-iron` / `--no-brim` / `--no-arrange` | off | no ironing even if the 3MF irons / no brim / no auto-arrange |
 | `--adaptive [QUALITY]` | off (`0.5` when given alone) | adaptive layer height, see below. QUALITY 0 = finest .. 0.5 = base layer .. 1 = fastest |
@@ -92,6 +92,16 @@ path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
 | `--json` | off | print the run result (`slice_result.json`) as one JSON line at the end |
 | `--dry-run` | off | write the flattened profiles only |
 | `--verify` | off | self-test: stock Elegoo PLA @ECC2 must resolve to flow 0.98 / aux fan 0 / min fan 50 |
+
+Fresh 3MF slices inherit designer process settings over the flattened stock defaults.
+Explicit options, selected acceleration/noise profile and wrapper safety/finish policies
+still win; `--pure-stock` deliberately retains the stock process. Machine and calibrated
+filament settings come from the destination profiles. The `.designer.json` beside each
+G-code compares every global source key with its output config, plus scoped settings
+with the prepared model. Replacements (including unsupported/unverified output keys)
+are embedded in the G-code and `slice_result.json` checks as `designer_replacements`.
+Each row includes the key, source value, output value and reason. Object/layer rows
+explicitly distinguish prepared-input evidence from output-toolpath evidence.
 
 ### What gets baked in
 
