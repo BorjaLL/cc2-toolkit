@@ -43,6 +43,12 @@ def reason(key, value, machine=(), filament=(), printer='cc2'):
         return 'Snapmaker CLI crash: wipe_tower_filament (pnw5)'
     if printer == 'u1' and key in {'wall_filament', 'solid_infill_filament', 'sparse_infill_filament'} and str(value) == '0':
         return 'Snapmaker CLI requires filament index >= 1; Bambu auto index 0 is invalid'
+    # The CC2 has one nozzle (single_extruder_multi_material=1): with ooze_prevention on and
+    # a prime tower the CLI stops with exit -51 ("Ooze prevention is only supported with the
+    # wipe tower when 'single_extruder_multi_material' is off"), bd_3d-printing-nbfrz.
+    if (key == 'ooze_prevention' and str(value) == '1' and isinstance(machine, dict)
+            and str(machine.get('single_extruder_multi_material')) == '1'):
+        return 'single-nozzle machine: ooze prevention needs separate nozzles (CLI exit -51)'
     if key in NEG_AUTO and str(value) == '-1':
         return 'Bambu negative auto value rejected by destination CLI'
     return None

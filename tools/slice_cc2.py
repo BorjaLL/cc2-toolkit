@@ -708,6 +708,11 @@ def main(argv=None, hooks=None):
         for key in designer.NEG_AUTO:
             if str(source.get(key)) == '-1' and key not in p_merged:
                 p_merged[key] = '2' if key == 'raft_first_layer_expansion' else '0'
+        # Same leak for a designer ooze_prevention=1 that designer.process refused on this
+        # single-nozzle machine (CLI exit -51, bd_3d-printing-nbfrz); --proc still wins.
+        if (str(source.get('ooze_prevention')) == '1' and 'ooze_prevention' not in kept
+                and 'ooze_prevention' not in policy):
+            p_merged['ooze_prevention'] = '0'
         with open(fp, 'w', encoding='utf-8') as f:
             json.dump(p_merged, f, indent=1)
     replacement_reasons = {k: 'selected acceleration/noise profile' for k in ACCEL[a.accel]}

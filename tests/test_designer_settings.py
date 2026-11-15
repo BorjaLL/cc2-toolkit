@@ -73,6 +73,32 @@ class DesignerSettingsTest(unittest.TestCase):
         kept = ds.process(source, printer='u1')
         self.assertEqual(kept, CAT)
 
+    def test_ooze_prevention_refused_on_single_nozzle_machine(self):
+        # bd_3d-printing-nbfrz: designer ooze_prevention=1 + prime tower on the CC2 (one nozzle)
+        # stopped the CLI with exit -51; absent from the flat profile it leaked back from the 3MF.
+        semm = {'single_extruder_multi_material': '1'}
+        source = dict(CAT, ooze_prevention='1', enable_prime_tower='1')
+        self.assertNotIn('ooze_prevention', ds.process(source, semm))
+        self.assertIn('-51', ds.reason('ooze_prevention', '1', semm))
+        self.assertEqual(ds.process(source, {'single_extruder_multi_material': '0'})['ooze_prevention'], '1')
+        with tempfile.TemporaryDirectory() as root:
+            model = os.path.join(root, 'probe.3mf')
+            with zipfile.ZipFile(model, 'w') as z:
+                z.writestr('Metadata/project_settings.config', json.dumps(source))
+            with FakeSlicer(root) as fake:
+                with open(fake.files['machine'], 'w') as f:
+                    json.dump(dict({'name': 'fake machine'}, **semm), f)
+                out = os.path.join(root, 'out')
+                run_main([model, '--out', out, '--dry-run'])
+                with open(os.path.join(out, '_profiles/flat_process.json')) as f:
+                    process = json.load(f)
+                self.assertEqual(process['ooze_prevention'], '0')
+                self.assertEqual(process['enable_prime_tower'], '1')
+                out2 = os.path.join(root, 'out2')
+                run_main([model, '--out', out2, '--dry-run', '--proc', 'ooze_prevention=1'])
+                with open(os.path.join(out2, '_profiles/flat_process.json')) as f:
+                    self.assertEqual(json.load(f)['ooze_prevention'], '1')   # --proc still wins
+
 
 if __name__ == '__main__':
     unittest.main()
