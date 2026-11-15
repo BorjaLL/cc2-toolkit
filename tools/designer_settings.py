@@ -26,6 +26,60 @@ NEG_AUTO_PRINTER = {'u1': {'prime_tower_brim_width'}}
 U1_LEGACY_FILAMENT = {'wipe_tower_extruder': 'wipe_tower_filament', 'infill_extruder': 'sparse_infill_filament',
                       'solid_infill_extruder': 'solid_infill_filament', 'perimeter_extruder': 'wall_filament'}
 SLICER = {'cc2': 'ElegooSlicer', 'u1': 'Snapmaker Orca'}
+# Two axes (bd_3d-printing-whkq3.4): `printer` is the hardware and its policy (CC2 one nozzle
+# + CANVAS/AFC, U1 four heads: machine, filament, M600, ooze, tool rules stay keyed by it);
+# `engine` is the slicer that reads the profile: 'fork' (the printer's vendor build, SLICER,
+# the default everywhere) or 'orca' (upstream OrcaSlicer, behind slice_cc2 CC2_SLICER_EXE).
+# Adding an engine never changes a printer's policy; an engine only names the slicer in
+# reasons and declares its value spellings and the fork keys it lacks.
+ENGINES = ('fork', 'orca')
+ENGINE_NAME = {'orca': 'OrcaSlicer'}
+# Fork value spellings upstream OrcaSlicer 2.5.1 refuses ('value X for KEY is not valid, using
+# Y instead') and replaces with its default. Each pair below was sliced on 2.5.1 (calibration
+# card, flat CC2 profiles): the mapped value gives the same bytes as the fallback and the same
+# config value as the fork, so mapping it removes the dependence on the default. Checked and
+# needing nothing (no warning, fork value kept): enable_arc_fitting 0/1 (written as
+# disabled/enabled, same bytes as those), ironing_type top/topmost/solid, fuzzy_skin
+# none/external/all/allwalls/disabled_fuzzy, ensure_vertical_shell_thickness
+# none/ensure_critical_only/ensure_moderate/ensure_all, nozzle_volume_type Standard/High Flow
+# (Normal reads as Standard in both engines).
+ENGINE_ENUMS = {
+    'orca': {
+        'ironing_type': {'no_ironing': 'no ironing'},
+        # the fork also reads both legacy values as ensure_all (its config block says so)
+        'ensure_vertical_shell_thickness': {'enabled': 'ensure_all', 'disabled': 'ensure_all'},
+    },
+}
+# Keys the printer's fork defines that the engine does not (its config block drops them).
+ENGINE_DROPS = {('orca', 'cc2'): {'bed_texture_area', 'filament_colour_type', 'silent_mode', 'support_mms',
+                                  'support_wan_network'}}
+# Fork workarounds kept on for the orca engine without an upstream slice that shows they are
+# still needed (or harmless): support_object_skip_flush off / label_crash refusal, ooze
+# prevention refusal, NEG_AUTO values, the LOADER renames. Listed so they are re-checked
+# before an engine promotion, not dropped silently.
+ENGINE_UNVERIFIED = {'orca': ('support_object_skip_flush', 'ooze_prevention', 'NEG_AUTO', 'LOADER')}
+
+
+def slicer_name(printer='cc2', engine='fork'):
+    """The slicer that reads a profile for `printer` with `engine` (reasons, report)."""
+    return ENGINE_NAME.get(engine) or SLICER.get(printer, printer)
+
+
+def engine_values(profile, engine='fork'):
+    """(copy of a flat profile dict with the engine's spellings, [(key, old, new)]). A list
+    value is mapped element-wise. engine 'fork': unchanged, no changes."""
+    table = ENGINE_ENUMS.get(engine) or {}
+    out, changes = dict(profile), []
+    for key, spell in table.items():
+        if key not in out:
+            continue
+        old = out[key]
+        new = [spell.get(v, v) if isinstance(v, str) else v for v in old] if isinstance(old, list) \
+            else spell.get(old, old) if isinstance(old, str) else old
+        if new != old:
+            out[key] = new
+            changes.append((key, old, new))
+    return out, changes
 # Per-plate process overrides of a BambuStudio plate (<plate> in model_settings.config).
 # The U1 conversion must drop the plate block (Snapmaker CLI crash, g7u7), so the selected
 # plate's overrides become global process values. Value '' = follow the global setting.
@@ -146,7 +200,7 @@ def _on(v):
     return str(_first(v)).strip().lower() in ('1', 'true')
 
 
-def translate(source, printer='cc2'):
+def translate(source, printer='cc2', engine='fork'):
     """{bambu_key: {'to': {destination_key: value}, 'reason': None | str}} for the BambuStudio
     process keys neither destination defines (bd_3d-printing-typ94).
 
@@ -184,7 +238,7 @@ def translate(source, printer='cc2'):
             put('top_one_wall_type', {'only_one_wall_top': '1'})
         else:
             put('top_one_wall_type', {'only_one_wall_top': '1'},
-                f'Bambu one wall on the topmost surface only ({wall}): {SLICER[printer]} has one switch for '
+                f'Bambu one wall on the topmost surface only ({wall}): {slicer_name(printer, engine)} has one switch for '
                 'every top surface, set on as its loader reads it')
     if 'initial_layer_flow_ratio' in s:
         ratio = s['initial_layer_flow_ratio']
@@ -215,10 +269,10 @@ def translate(source, printer='cc2'):
     return out
 
 
-def process(source, machine=(), filament=(), printer='cc2'):
+def process(source, machine=(), filament=(), printer='cc2', engine='fork'):
     """Designer keys the destination keeps, with Bambu-only keys replaced by their
     destination meaning (translate)."""
-    mapped = translate(source, printer)
+    mapped = translate(source, printer, engine)
     out = {k: v for k, v in source.items()
            if k not in mapped and reason(k, v, machine, filament, printer) is None}
     for entry in mapped.values():
@@ -226,10 +280,10 @@ def process(source, machine=(), filament=(), printer='cc2'):
     return out
 
 
-def withheld(source, printer='cc2'):
+def withheld(source, printer='cc2', engine='fork'):
     """Bambu keys process() replaced: drop them from any merged destination process too, or
     its loader re-translates them after (a later JSON position wins)."""
-    return set(translate(source, printer))
+    return set(translate(source, printer, engine))
 
 
 # The destination loaders' own renames of Bambu keys we leave to them (same rule as
@@ -305,12 +359,15 @@ FAMILIES = [
 ]
 
 
-def unsupported_reason(key, printer='cc2'):
+def unsupported_reason(key, printer='cc2', engine='fork'):
     """Why a designer key absent from the destination output has no destination value."""
+    name = slicer_name(printer, engine)
+    if key in ENGINE_DROPS.get((engine, printer), ()):
+        return f'{SLICER.get(printer, printer)}-only key: {name} does not define {key}'
     for pattern, why in FAMILIES:
         if re.fullmatch(pattern, key):
-            return f'{why} ({SLICER.get(printer, printer)} does not define {key})'
-    return (f'unknown to {SLICER.get(printer, printer)}: its loader drops keys outside its config '
+            return f'{why} ({name} does not define {key})'
+    return (f'unknown to {name}: its loader drops keys outside its config '
             'definitions; no verified equivalent')
 
 
@@ -356,33 +413,33 @@ def config(path):
     return out
 
 
-def audit(source, effective, reasons=None, machine=(), filament=(), printer='cc2'):
+def audit(source, effective, reasons=None, machine=(), filament=(), printer='cc2', engine='fork'):
     """One row per designer key, including keys the destination does not serialize."""
     rows = []
-    mapped = translate(source, printer)
+    mapped = translate(source, printer, engine)
     loader = dict(LOADER['both'], **LOADER.get(printer, {}))
     for k, v in sorted(source.items()):
         used = effective.get(k)
         why = (reasons or {}).get(k) or reason(k, v, machine, filament, printer)
         same = k in effective and equivalent(v, used)
         if not same and k not in effective and (k in mapped or k in loader) and not (reasons or {}).get(k):
-            rows.append(_mapped_row(k, v, mapped.get(k), loader.get(k), effective, reasons or {}, printer))
+            rows.append(_mapped_row(k, v, mapped.get(k), loader.get(k), effective, reasons or {}, printer, engine))
             continue
         rows.append({'key': k, 'designer_value': v, 'our_value': used,
                      'status': 'survives' if same else 'replaced-with-reason',
                      'reason': None if same else why or
-                     ('destination slicer normalization' if k in effective else unsupported_reason(k, printer))})
+                     ('destination slicer normalization' if k in effective else unsupported_reason(k, printer, engine))})
     return rows
 
 
-def _mapped_row(key, value, entry, rule, effective, reasons, printer):
+def _mapped_row(key, value, entry, rule, effective, reasons, printer, engine='fork'):
     """Audit row of a Bambu-only key given a destination meaning (translate, or the
     destination loader's own rename): 'mapped' only when the output holds that meaning."""
     by_loader = entry is None
     to = rule(value) if by_loader else entry['to']
     got = {k: effective.get(k) for k in to}
     row = {'key': key, 'designer_value': value, 'our_key': sorted(to), 'our_value': got or None,
-           'mapping': f'{SLICER.get(printer, printer)} loader rename (same rule as BambuStudio)' if by_loader
+           'mapping': f'{slicer_name(printer, engine)} loader rename (same rule as BambuStudio)' if by_loader
            else 'designer_settings.translate'}
     wrong = sorted(k for k in to if k not in effective or not equivalent(to[k], effective[k]))
     if wrong:
@@ -621,7 +678,8 @@ def _plate_row(scope, key, value, plates, effective, reasons, tools):
                 'slicing effect; plate block removed (Snapmaker CLI crash, g7u7)')
 
 
-def report(path, sources, reasons=None, machine=(), filament=(), printer='cc2', prepared=None, plate=None):
+def report(path, sources, reasons=None, machine=(), filament=(), printer='cc2', prepared=None, plate=None,
+           engine='fork'):
     """Write PATH.designer.json and the G-code header line. plate = the designer plate (or
     plates) of the slice: its per-plate process values are read as global designer values
     (the U1 copy has them as global values, the CC2 G-code CONFIG_BLOCK writes the plate's)."""
@@ -630,7 +688,7 @@ def report(path, sources, reasons=None, machine=(), filament=(), printer='cc2', 
     for model in sources:
         rows += [dict(row, model=str(model), scope='global') for row in
                  audit(read(model, sliced_plates(model, plate)), effective, reasons,
-                       machine, filament, printer)]
+                       machine, filament, printer, engine)]
     for model, target in zip(sources, prepared or sources):
         before, after = scoped(model), scoped(target)
         tools = None
@@ -668,6 +726,8 @@ def report(path, sources, reasons=None, machine=(), filament=(), printer='cc2', 
                         replacements.append(row)
     result = {'schema_version': 1, 'printer': printer, 'settings': rows,
               'designer_replacements': replacements}
+    if engine != 'fork':   # the default engine adds no key (existing audits stay byte-equal)
+        result['engine'] = engine
     result['checks'] = [{'check': 'designer_settings', 'designer_replacements': replacements}]
     with open(path + '.designer.json', 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2)

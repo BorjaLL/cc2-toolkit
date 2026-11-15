@@ -348,5 +348,61 @@ class BambuOnlyKeysTest(unittest.TestCase):
         self.assertEqual(ds._paint_states('0C'), {3})    # 11 + group 0 = state 3
 
 
+class EngineAxisTest(unittest.TestCase):
+    """bd_3d-printing-whkq3.4: the slicer engine is its own axis; printer policy is unchanged by it."""
+    SINGLE = {'single_extruder_multi_material': '1'}
+
+    def test_fork_default_is_the_printer_slicer(self):
+        for printer, name in (('cc2', 'ElegooSlicer'), ('u1', 'Snapmaker Orca')):
+            self.assertEqual(ds.slicer_name(printer), name)
+            self.assertEqual(ds.slicer_name(printer, 'fork'), name)
+            self.assertEqual(ds.slicer_name(printer, 'orca'), 'OrcaSlicer')
+            self.assertEqual(ds.unsupported_reason('brand_new_key', printer),
+                             ds.unsupported_reason('brand_new_key', printer, 'fork'))
+            self.assertEqual(ds.audit(BAMBU, {}, printer=printer), ds.audit(BAMBU, {}, printer=printer, engine='fork'))
+        self.assertIn('unknown to OrcaSlicer', ds.unsupported_reason('brand_new_key', 'cc2', 'orca'))
+        self.assertIn('ElegooSlicer-only key: OrcaSlicer', ds.unsupported_reason('silent_mode', 'cc2', 'orca'))
+        self.assertIn('unknown to ElegooSlicer', ds.unsupported_reason('silent_mode', 'cc2'))
+
+    def test_orca_engine_keeps_printer_hardware_policy(self):
+        src = dict(BAMBU, ooze_prevention='1', support_object_skip_flush='1', nozzle_temperature=['220'],
+                   machine_start_gcode='G28', prime_tower_brim_width='-1')
+        for printer in ('cc2', 'u1'):
+            self.assertEqual(ds.process(src, self.SINGLE, printer=printer),
+                             ds.process(src, self.SINGLE, printer=printer, engine='orca'))
+            self.assertEqual(ds.withheld(src, printer), ds.withheld(src, printer, 'orca'))
+        rows = {r['key']: r for r in ds.audit(src, {}, machine=self.SINGLE, printer='cc2', engine='orca')}
+        self.assertIn('single-nozzle', rows['ooze_prevention']['reason'])
+        self.assertIn('foavq', rows['support_object_skip_flush']['reason'])
+        self.assertEqual(rows['machine_start_gcode']['reason'], 'destination machine and bed policy')
+        self.assertEqual(ds.translate(BAMBU, 'cc2', 'orca')['ironing_direction']['to'],
+                         ds.translate(BAMBU, 'cc2')['ironing_direction']['to'])
+
+    def test_engine_values(self):
+        prof = {'ironing_type': 'no_ironing', 'ensure_vertical_shell_thickness': 'enabled',
+                'enable_arc_fitting': '1', 'fuzzy_skin': 'external', 'nozzle_volume_type': ['Standard']}
+        self.assertEqual(ds.engine_values(prof), (prof, []))
+        self.assertEqual(ds.engine_values(prof, 'fork'), (prof, []))
+        out, changes = ds.engine_values(prof, 'orca')
+        self.assertEqual(out, dict(prof, ironing_type='no ironing', ensure_vertical_shell_thickness='ensure_all'))
+        self.assertEqual(sorted(k for k, _, _ in changes), ['ensure_vertical_shell_thickness', 'ironing_type'])
+        self.assertEqual(prof['ironing_type'], 'no_ironing')                   # input not changed
+        self.assertEqual(ds.engine_values({'ironing_type': ['no_ironing', 'top']}, 'orca')[0],
+                         {'ironing_type': ['no ironing', 'top']})
+        for value in ('top', 'topmost', 'solid', 'no ironing'):
+            self.assertEqual(ds.engine_values({'ironing_type': value}, 'orca')[1], [])
+
+    def test_report_names_engine_only_when_not_fork(self):
+        with tempfile.TemporaryDirectory() as root:
+            g = os.path.join(root, 'plate_1.gcode')
+            for engine, has in (('fork', False), ('orca', True)):
+                with open(g, 'w') as f:
+                    f.write('; CONFIG_BLOCK_START\n; wall_loops = 2\n; CONFIG_BLOCK_END\n')
+                kwargs = {} if engine == 'fork' else {'engine': engine}
+                result = ds.report(g, [], **kwargs)
+                self.assertEqual('engine' in result, has)
+                self.assertEqual(result.get('engine'), 'orca' if has else None)
+
+
 if __name__ == '__main__':
     unittest.main()
