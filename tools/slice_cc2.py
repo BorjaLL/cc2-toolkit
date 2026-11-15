@@ -700,7 +700,16 @@ def main(argv=None, hooks=None):
     p_merged = flatten(PROCESS[a.layer], "process", proc_over, fp)
     f_merged = flatten(FILAMENT[a.filament], "filament", fil_over, ff)
     # Flattening is required by the CLI, but stock defaults are not model choices.
-    source = designer.read(a.model)
+    # The sliced plate's print_sequence etc. become global designer values (as on the U1):
+    # ElegooSlicer honours the plate block, but translate derives global keys from them
+    # (skirt_per_object -> skirt_type perobject only by object, bd_3d-printing-zoj6a).
+    designer_plates = designer.cc2_plates(a.model, a.plate)
+    source = designer.read(a.model, designer_plates)
+    mixed = designer.plate_conflicts(a.model, designer_plates)
+    if 'print_sequence' in mixed and designer._on(source.get('skirt_per_object')):
+        print(f"WARNING: plates {','.join(map(str, designer_plates))} differ in print_sequence: one skirt_type "
+              f"({'perobject' if str(designer._first(source.get('print_sequence'))) == 'by object' else 'combined'}, "
+              "from the global print_sequence) for all; slice each plate with --plate N for its own skirt")
     kept = designer.process(source, m_merged, f_merged)
     if not a.pure_stock:
         p_merged.update(kept)
@@ -915,7 +924,7 @@ def main(argv=None, hooks=None):
     audit_paths = {}
     for g, plate in plates:
         audit = designer.report(g, original_models, replacement_reasons, m_merged, f_merged,
-                                prepared=models)
+                                prepared=models, plate=None if a.more else (a.plate or plate))
         audit_paths[plate] = g + '.designer.json'
         a.checks.append({'check': 'designer_settings', 'file': g, 'ok': True,
                          'designer_replacements': audit['designer_replacements']})

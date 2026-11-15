@@ -321,6 +321,8 @@ def support_keys(paths):
 
 
 def equivalent(a, b):
+    """Same setting value. A list against a string compares element-wise too: the G-code
+    CONFIG_BLOCK writes a list comma-joined (first_layer_print_sequence 2,1), some ';'."""
     def norm(v):
         if isinstance(v, list):
             return ';'.join(norm(x) for x in v)
@@ -329,7 +331,13 @@ def equivalent(a, b):
             return f'{float(s):g}'
         except ValueError:
             return s
-    return norm(a) == norm(b)
+    if norm(a) == norm(b):
+        return True
+    if isinstance(a, list) != isinstance(b, list):
+        listed, text = (a, b) if isinstance(a, list) else (b, a)
+        if isinstance(text, str):
+            return norm(listed) == norm(re.split(r'[,;]', text))
+    return False
 
 
 def config(path):
@@ -439,6 +447,21 @@ def _model_settings(path):
         if 'Metadata/model_settings.config' not in z.namelist():
             return ''
         return z.read('Metadata/model_settings.config').decode('utf-8', errors='replace')
+
+
+def cc2_plates(model, plate=0):
+    """The designer plates whose per-plate process values a CC2 slice of `model` makes global:
+    the sliced plate (--plate N or a one-plate source), else every plate (merged: a value
+    only where all plates agree, plate_process). ElegooSlicer honours the plate block itself,
+    but derived keys (skirt_per_object -> skirt_type) are global, bd_3d-printing-zoj6a."""
+    return sliced_plates(model, plate or None) or [p for p, _ in plate_blocks(_model_settings(model))] or None
+
+
+def plate_conflicts(model, plates):
+    """Per-plate process keys the merged designer plates disagree on (left at the global value)."""
+    if not plates or len(plates) < 2:
+        return set()
+    return plate_process(_model_settings(model), plates)[1]
 
 
 def sliced_plates(model, plate=None):
@@ -600,12 +623,13 @@ def _plate_row(scope, key, value, plates, effective, reasons, tools):
 
 def report(path, sources, reasons=None, machine=(), filament=(), printer='cc2', prepared=None, plate=None):
     """Write PATH.designer.json and the G-code header line. plate = the designer plate (or
-    plates) of a U1 slice: its per-plate process values are read as global designer values."""
+    plates) of the slice: its per-plate process values are read as global designer values
+    (the U1 copy has them as global values, the CC2 G-code CONFIG_BLOCK writes the plate's)."""
     rows = []
     effective = config(path)
     for model in sources:
         rows += [dict(row, model=str(model), scope='global') for row in
-                 audit(read(model, sliced_plates(model, plate) if printer == 'u1' else None), effective, reasons,
+                 audit(read(model, sliced_plates(model, plate)), effective, reasons,
                        machine, filament, printer)]
     for model, target in zip(sources, prepared or sources):
         before, after = scoped(model), scoped(target)

@@ -1,4 +1,6 @@
 """Designer process precedence, explicit choices and complete replacement reports."""
+import contextlib
+import io
 import json
 import os
 import sys
@@ -8,7 +10,7 @@ import zipfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'tools'))
 import designer_settings as ds
-from test_tools import FakeSlicer, run_main
+from test_tools import FakeSlicer, run_main, sc
 
 CAT = {'enable_support': '1', 'support_type': 'tree(auto)', 'support_style': 'tree_slim',
        'support_threshold_angle': '40', 'support_top_z_distance': '0.23',
@@ -251,6 +253,59 @@ class BambuOnlyKeysTest(unittest.TestCase):
             self.assertEqual(merged, {})
             self.assertEqual(conflicts, {'first_layer_print_sequence', 'print_sequence', 'spiral_mode'})
 
+    def test_cc2_plate_print_sequence_drives_skirt(self):
+        # bd_3d-printing-zoj6a: plate 'by object' under a global 'by layer' printed ONE skirt
+        # on the CC2: translate read the global print_sequence. The sliced plate's value wins.
+        settings = {'print_sequence': 'by layer', 'skirt_per_object': '1', 'skirt_loops': '2'}
+        plates = [{'plater_id': '1', 'print_sequence': 'by object'},
+                  {'plater_id': '2', 'print_sequence': 'by layer'}]
+        with tempfile.TemporaryDirectory() as root:
+            model, single = os.path.join(root, 'm.3mf'), os.path.join(root, 'one.3mf')
+            three_mf(model, settings, plates)
+            three_mf(single, settings, plates[:1])
+            self.assertEqual(ds.cc2_plates(model, 1), [1])
+            self.assertEqual(ds.cc2_plates(model, 0), [1, 2])
+            self.assertEqual(ds.cc2_plates(single, 0), [1])
+            self.assertEqual(ds.plate_conflicts(model, [1, 2]), {'print_sequence'})
+
+            def flat(path, *more):
+                out = os.path.join(root, 'out' + str(len(os.listdir(root))))
+                log = io.StringIO()
+                with contextlib.redirect_stdout(log):
+                    sc.main([path, '--out', out, '--dry-run'] + list(more))
+                with open(os.path.join(out, '_profiles/flat_process.json')) as f:
+                    process = json.load(f)
+                return process, log.getvalue()
+            with FakeSlicer(root):
+                for path, more in ((model, ['--plate', '1']), (single, [])):
+                    process, log = flat(path, *more)
+                    self.assertEqual((process['print_sequence'], process['skirt_type']), ('by object', 'perobject'))
+                    self.assertNotIn('differ in print_sequence', log)
+                process, _ = flat(model, '--plate', '2')
+                self.assertEqual(process['skirt_type'], 'combined')
+                # all plates with mixed sequences: global value, said so
+                process, log = flat(model)
+                self.assertEqual((process['print_sequence'], process['skirt_type']), ('by layer', 'combined'))
+                self.assertIn('plates 1,2 differ in print_sequence', log)
+            # the CC2 audit reads the sliced plate too: no false global replacement
+            g = os.path.join(root, 'plate_1.gcode')
+            with open(g, 'w') as f:
+                f.write('; CONFIG_BLOCK_START\n; print_sequence = by object\n; skirt_type = perobject\n'
+                        '; skirt_loops = 2\n; CONFIG_BLOCK_END\n')
+            rows = {r['key']: r for r in ds.report(g, [model], plate='plate_1')['settings'] if r['scope'] == 'global'}
+            self.assertEqual(rows['print_sequence']['status'], 'survives')
+            self.assertEqual(rows['skirt_per_object']['status'], 'mapped')
+
+    def test_list_against_comma_string(self):
+        # bd_3d-printing-vitji: the CONFIG_BLOCK writes a list comma-joined.
+        self.assertTrue(ds.equivalent(['2', '1'], '2,1'))
+        self.assertTrue(ds.equivalent('2, 1', ['2', '1']))
+        self.assertTrue(ds.equivalent(['0.2', '0.4'], '0.20;0.4'))
+        self.assertTrue(ds.equivalent(['0'], '0'))
+        self.assertFalse(ds.equivalent(['1', '2'], '2,1'))
+        self.assertFalse(ds.equivalent(['2', '1'], '2,1,3'))
+        self.assertFalse(ds.equivalent('2,1', '2;1'))   # two strings: no list reading
+
     def test_u1_report_plate_rows(self):
         plates = [{'plater_id': '1', 'filament_maps': '2 1', 'filament_map_mode': 'Auto For Flush',
                    'filament_volume_maps': '0 1', 'first_layer_print_sequence': '2 1', 'thumbnail_file': 'x.png'},
@@ -270,6 +325,9 @@ class BambuOnlyKeysTest(unittest.TestCase):
                         '; filament used [mm] = 10.0, 5.0, 0.00, 0.00\n')
             rows = ds.report(g, [model], printer='u1', prepared=[prepared], plate=1)['settings']
             plate = {(r['scope'].split('/')[-1], r['key']): r for r in rows if '/plate:' in r.get('scope', '')}
+            glob = {r['key']: r for r in rows if r['scope'] == 'global'}
+            # vitji: designer list ['2', '1'] = G-code '2,1', not a slicer normalization
+            self.assertEqual(glob['first_layer_print_sequence']['status'], 'survives')
             self.assertEqual(plate[('plate:1', 'first_layer_print_sequence')]['status'], 'mapped')
             self.assertEqual(plate[('plate:1', 'filament_maps')]['status'], 'mapped')
             self.assertIn('T0, T1', plate[('plate:1', 'filament_maps')]['evidence'])
