@@ -99,6 +99,33 @@ class DesignerSettingsTest(unittest.TestCase):
                 with open(os.path.join(out2, '_profiles/flat_process.json')) as f:
                     self.assertEqual(json.load(f)['ooze_prevention'], '1')   # --proc still wins
 
+    def test_skip_flush_off_on_cc2_with_exclude_object(self):
+        # bd_3d-printing-foavq: Bambu P2S/H2S 3MFs carry support_object_skip_flush=1 and
+        # exclude_object=1; ElegooSlicer then stops "Unknown label object id!" (exit -100).
+        source = dict(CAT, support_object_skip_flush='1', exclude_object='1')
+        self.assertNotIn('support_object_skip_flush', ds.process(source))
+        self.assertIn('Unknown label object id', ds.reason('support_object_skip_flush', '1'))
+        self.assertIsNone(ds.reason('support_object_skip_flush', '0'))
+        self.assertIsNone(ds.reason('support_object_skip_flush', '1', printer='u1'))
+        self.assertIsNone(ds.label_crash({'support_object_skip_flush': '0', 'exclude_object': '1'}))
+        self.assertIsNone(ds.label_crash({'support_object_skip_flush': '1', 'exclude_object': '0'}))
+        self.assertIn('foavq', ds.label_crash({'support_object_skip_flush': ['1'], 'exclude_object': 'true'}))
+        with tempfile.TemporaryDirectory() as root:
+            model = os.path.join(root, 'skadis.3mf')
+            with zipfile.ZipFile(model, 'w') as z:
+                z.writestr('Metadata/project_settings.config', json.dumps(source))
+            with FakeSlicer(root):
+                out = os.path.join(root, 'out')
+                run_main([model, '--out', out, '--dry-run'])
+                with open(os.path.join(out, '_profiles/flat_process.json')) as f:
+                    process = json.load(f)
+                self.assertEqual(process['support_object_skip_flush'], '0')
+                self.assertEqual(process['exclude_object'], '1')   # designer labels kept
+                # An explicit --proc support_object_skip_flush=1 wins, so it is refused before slicing.
+                code = run_main([model, '--out', os.path.join(root, 'out2'), '--dry-run',
+                                 '--proc', 'support_object_skip_flush=1'])
+                self.assertIn('Unknown label object id', str(code))
+
 
 # Bambu-only process keys (bd_3d-printing-typ94) and per-plate process values (g0vh1).
 BAMBU = {'ironing_direction': '45', 'infill_direction': '45', 'top_one_wall_type': 'not apply',

@@ -729,6 +729,13 @@ def main(argv=None, hooks=None):
         if (str(source.get('ooze_prevention')) == '1' and 'ooze_prevention' not in kept
                 and 'ooze_prevention' not in policy):
             p_merged['ooze_prevention'] = '0'
+        # And for a designer support_object_skip_flush=1 (Bambu P2S/H2S/A2L 3MFs, with
+        # exclude_object=1): the CLI reads it from the 3MF when the flat profile omits it
+        # and stops with "Unknown label object id!" (bd_3d-printing-foavq); --proc still wins.
+        if (designer._on(source.get('support_object_skip_flush'))
+                and 'support_object_skip_flush' not in kept
+                and 'support_object_skip_flush' not in policy):
+            p_merged['support_object_skip_flush'] = '0'
         # A Bambu-only key designer.process translated (bd_3d-printing-typ94) must not stay
         # under its Bambu name too: the flat Elegoo profile carries several (top_one_wall_type,
         # ironing_direction, prime_tower_rib_wall ...) after their destination keys, and the
@@ -805,6 +812,10 @@ def main(argv=None, hooks=None):
         slot_files = named_slots
     if a.model.lower().endswith(".3mf"):
         preflight_3mf(a.model, p_merged)
+    # 3MF keys the flat profile omits reach the CLI from the project config.
+    refusal = designer.label_crash(dict(source, **p_merged))
+    if refusal:
+        sys.exit(refusal)
     if a.dry_run:
         print("dry-run: profiles written to", work)
         return
@@ -846,6 +857,10 @@ def main(argv=None, hooks=None):
         print("gcode: (none - slicer failed, check slice.log)")
         result["diagnostics"] = log_diagnostics(log)
         hint = slicer_exit_hint(result["slicer_exit_signed"], a.no_arrange)
+        with open(log, encoding="utf-8", errors="replace") as lf:
+            label_stop = "Unknown label object id" in lf.read()
+        if label_stop:
+            hint = designer.SKIP_FLUSH_REASON.replace("; off (", " (")
         if hint:
             result["slicer_exit_hint"] = hint
             print(f"slicer exit {result['slicer_exit_signed']}: {hint}")
@@ -1030,7 +1045,7 @@ def log_diagnostics(log, limit=10):
             lines = [l.strip() for l in f if l.strip()]
     except OSError:
         return []
-    hits = [l for l in lines if re.search(r"error|fail|invalid|outside|exceed|range", l, re.I)]
+    hits = [l for l in lines if re.search(r"error|fail|invalid|outside|exceed|range|unknown", l, re.I)]
     return (hits or lines)[-limit:]
 
 

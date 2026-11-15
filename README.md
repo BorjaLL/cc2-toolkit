@@ -30,6 +30,10 @@ as recommended values.
   to the flow limit (`filaments/`).
 - **Tools:** `send_cc2.py` no longer greps a large G-code whole on the
   printer to read the colour table.
+- **Bambu P2S / H2S / A2L 3MFs:** `slice_cc2.py` turns their
+  `support_object_skip_flush` off; with `exclude_object` on, ElegooSlicer
+  stopped with "Unknown label object id!" (exit -100), which looked like a
+  mesh error.
 
 ## What changed (2026-10-17)
 

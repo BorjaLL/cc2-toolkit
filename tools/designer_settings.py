@@ -110,8 +110,31 @@ def reason(key, value, machine=(), filament=(), printer='cc2'):
     if (key == 'ooze_prevention' and str(value) == '1' and isinstance(machine, dict)
             and str(machine.get('single_extruder_multi_material')) == '1'):
         return 'single-nozzle machine: ooze prevention needs separate nozzles (CLI exit -51)'
+    if printer == 'cc2' and key == 'support_object_skip_flush' and _on(value):
+        return SKIP_FLUSH_REASON
     if key in NEG_AUTO and str(value) == '-1':
         return 'Bambu negative auto value rejected by destination CLI'
+    return None
+
+
+# bd_3d-printing-foavq: Bambu "skip object" flush (M624 label bitmask, Bambu firmware only).
+# ElegooSlicer GCode.cpp lists the label ids only for Bambu printers (is_bbl_printers) but,
+# with exclude_object on and print_sequence by layer, encodes them for every extruder of every
+# layer when support_object_skip_flush is on: the empty list throws "Unknown label object id!"
+# and the CLI exits -100 on the first layer. Bambu Studio 2.x P2S / H2S / A2L / X2D 3MFs carry both on.
+SKIP_FLUSH_REASON = ('Bambu skip-object flush (M624 label ids, Bambu firmware only): ElegooSlicer '
+                     'stops with "Unknown label object id!" (exit -100) when it is on with '
+                     'exclude_object on a non-Bambu printer; off (bd_3d-printing-foavq)')
+
+
+def label_crash(effective):
+    """Refusal message when the effective CC2 process would hit the ElegooSlicer
+    "Unknown label object id!" stop (support_object_skip_flush and exclude_object both on,
+    see SKIP_FLUSH_REASON), else None."""
+    if _on(effective.get('support_object_skip_flush')) and _on(effective.get('exclude_object')):
+        return ('refused: support_object_skip_flush=1 with exclude_object=1 stops ElegooSlicer '
+                'with "Unknown label object id!" (exit -100) on a non-Bambu printer; set '
+                'support_object_skip_flush=0 or exclude_object=0 (bd_3d-printing-foavq)')
     return None
 
 
