@@ -377,6 +377,16 @@ class TestEngineSwitch(unittest.TestCase):
         self.assertEqual(self.result()["status"], "engine_mismatch")
         self.assertFalse(os.path.exists(os.path.join(self.out, "plate_1.gcode")))
 
+    def test_dry_run_writes_engine_spellings(self):
+        # --dry-run with the flag on leaves the flat files exactly as the engine would get them
+        for engine, want in ((sc.FrozenEngine(self.install()), "no ironing"), (sc.FrozenEngine(None), "no_ironing")):
+            sc.ENGINE = engine
+            code, fake = self.slice("", ["--dry-run"])
+            self.assertIsNone(code)
+            self.assertEqual(fake.calls, [])
+            with open(os.path.join(self.out, "_profiles", "flat_process.json"), encoding="utf-8") as f:
+                self.assertEqual(json.load(f)["ironing_type"], want)
+
     def test_unknown_or_missing_engine_refused_before_slicing(self):
         sc.ENGINE = sc.FrozenEngine(self.install(lib=None))
         code, fake = self.slice("")
