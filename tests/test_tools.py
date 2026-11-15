@@ -275,6 +275,73 @@ class TestSliceOutputs(unittest.TestCase):
         self.assertEqual(read(self.old), "M600\n")
 
 
+class TestSlotColours(unittest.TestCase):
+    """bd_3d-printing-nbfrz: ElegooSlicer 1.5.3.5 sizes its filament list from filament_colour.
+    Stock Elegoo presets carry none, so a 3MF with no colour list that put filament 2+ on an
+    object crashed the CLI (0xC0000005). Every slot of a --slots > 1 slice gets a colour."""
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.out = os.path.join(self.d, "out")
+        os.makedirs(self.out)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def model(self, project=None):
+        import zipfile
+        path = os.path.join(self.d, "m.3mf")
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("3D/3dmodel.model", "<model/>")
+            z.writestr("Metadata/model_settings.config",
+                       '<config><object id="1"><metadata key="extruder" value="3"/></object></config>')
+            if project is not None:
+                z.writestr("Metadata/project_settings.config", json.dumps(project))
+        return path
+
+    def slot_colours(self, argv):
+        seen = []
+
+        class Capture(FakeSlicer):
+            def call(slf, cmd, stdout=None, stderr=None):
+                for p in cmd[cmd.index("--load-filaments") + 1].split(";"):
+                    with open(p, encoding="utf-8") as f:
+                        slot = json.load(f)
+                    seen.append((slot["name"], slot.get("filament_colour")))
+                return FakeSlicer.call(slf, cmd, stdout, stderr)
+
+        with Capture(self.d):
+            code = run_main(argv + ["--out", self.out])
+        self.assertEqual(code, sc.EXIT_OK)
+        return seen
+
+    def test_generic_3mf_gets_a_colour_per_slot(self):
+        seen = self.slot_colours([self.model(), "--slots", "3"])
+        self.assertEqual([c for _, c in seen], [[sc.DEFAULT_FILAMENT_COLOUR]] * 3)
+        self.assertEqual(len({n for n, _ in seen}), 3)   # distinct names stay
+
+    def test_designer_colours_kept_and_padded(self):
+        seen = self.slot_colours([self.model({"filament_colour": ["#111111", "bad"]}),
+                                  "--slots", "3", "--slot-filament", "2=pla"])
+        self.assertEqual([c for _, c in seen],
+                         [["#111111"], [sc.DEFAULT_FILAMENT_COLOUR], [sc.DEFAULT_FILAMENT_COLOUR]])
+
+    def test_single_slot_unchanged(self):
+        seen = self.slot_colours([self.model(), "--slots", "1"])
+        self.assertEqual([c for _, c in seen], [None])
+
+    def test_slot_colours_helper(self):
+        self.assertEqual(sc.slot_colours({}, 2), [sc.DEFAULT_FILAMENT_COLOUR] * 2)
+        self.assertEqual(sc.slot_colours({"filament_colour": ["#AbCdEf", "#11223344"]}, 2),
+                         ["#AbCdEf", "#11223344"])
+        self.assertEqual(sc.slot_colours({"filament_colour": "#FFFFFF"}, 1), [sc.DEFAULT_FILAMENT_COLOUR])
+
+    def test_access_violation_hint(self):
+        hint = sc.slicer_exit_hint(-1073741819)
+        self.assertIn("0xC0000005", hint)
+        self.assertIn("filament_colour", hint)
+
+
 def tower(r=10.0, h=10.0, cap=2.0, n=24):
     """Closed mesh: vertical cylinder of height h with a shallow cone cap (triangles)."""
     import math

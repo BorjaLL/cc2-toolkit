@@ -79,7 +79,7 @@ path, plate, md5, M600 stripped), `stale_in_out`, `checks` (added by wrappers),
 | `--proc KEY=VALUE` | none | extra process override, applied last (repeatable) |
 | `--fil KEY=VALUE` | none | extra filament override (repeatable) |
 | `--slot-filament N=KIND[:TEMP[:FLOW]]` | none | a different filament in slot N |
-| `--slots N` (alias `--slot-count N`) | `1` | a count: load the filament into the first N slicer slots, i.e. tools T0..T(N-1) (needed when a 3MF uses slots above 1). The physical CANVAS slot per tool is picked at start (`slot_map`), not here |
+| `--slots N` (alias `--slot-count N`) | `1` | a count: load the filament into the first N slicer slots, i.e. tools T0..T(N-1) (needed when a 3MF uses slots above 1). The physical CANVAS slot per tool is picked at start (`slot_map`), not here. Each slot gets a `filament_colour` (the 3MF's, else `#F2754E`): without it ElegooSlicer 1.5.3.5 crashed (0xC0000005) on a 3MF with no colour list that puts filament 2+ on an object |
 | `--plate N` | `0` (all) | slice one plate of a multi-plate 3MF |
 | `--supports` | off | enables supports, retaining designer type/threshold/gaps; without designer values: normal(auto), build plate only, 25 degrees |
 | `--iron top\|topmost\|solid` | the designer's | iron although the model does not ask for it (default: the 3MF's `ironing_type`; STL input = no ironing) |
@@ -274,7 +274,8 @@ place. Nothing below changes the command-line behaviour.
   toolkit 1.3.0 added `adaptive_models()` and `adaptive_layers.py`; toolkit 1.4.0
   added `SLICER_EXIT_HINTS` / `slicer_exit_hint()`, `--thumbnail` with
   `thumbnail.py` (`thumbnail.add(path, force=False, png=None)`) and
-  `check_accel.py --max-accel` (`peak_accel()`); API still 2).
+  `check_accel.py --max-accel` (`peak_accel()`); API still 2; 1.4.1 gives each
+  slot of a `--slots` > 1 slice a `filament_colour` (`slot_colours()`), see `--slots`).
   `TOOLKIT_VERSION` is reported in `slice_result.json`.
 - `slice_cc2.main(argv=None, hooks=None)`: `hooks` is any object with optional
   `add_arguments(ap)` (add options, change defaults), `parsed(a)` (right after

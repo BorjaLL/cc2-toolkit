@@ -63,7 +63,7 @@ __all__ = ["TOOLKIT_VERSION", "API_VERSION", "SLICER_DIR", "EXE", "PROFILES", "M
            "STOCK_PLA_EXPECT", "DESIGNER_KEYS", "TALL_RATIO", "TALL_MIN_H",
            "EXIT_OK", "EXIT_ERROR", "EXIT_USAGE", "EXIT_REFUSED", "EXIT_SLICER_FAILED",
            "EXIT_NO_OUTPUT", "RESULT_FILE", "SLICER_EXIT_HINTS", "slicer_exit_hint", "resolve_leaf", "flatten", "verify_stock",
-           "designer_setting", "preflight_3mf", "adaptive_models", "move_to_name",
+           "designer_setting", "slot_colours", "preflight_3mf", "adaptive_models", "move_to_name",
            "send_to_printer", "main"]
 
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
@@ -299,6 +299,22 @@ def designer_setting(path, key):
     if isinstance(v, list):
         v = v[0] if v else None
     return v.replace(" ", "_") if isinstance(v, str) else None
+
+
+DEFAULT_FILAMENT_COLOUR = "#F2754E"   # the CLI's own default (G-code header with no colour set)
+
+
+def slot_colours(project, count):
+    """One '#RRGGBB' per slicer slot: the 3MF project's filament_colour where it has
+    one, else the CLI default. project: the 3MF's project settings dict (may be {})."""
+    given = project.get("filament_colour") if isinstance(project, dict) else None
+    given = given if isinstance(given, list) else []
+    out = []
+    for i in range(count):
+        c = given[i] if i < len(given) else None
+        ok = isinstance(c, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?", c)
+        out.append(c if ok else DEFAULT_FILAMENT_COLOUR)
+    return out
 
 
 def preflight_3mf(path, proc):
@@ -759,12 +775,22 @@ def main(argv=None, hooks=None):
     # filament when deciding whether to keep a prime tower, even if the 3MF
     # switches between them. Give each slot a distinct preset name without
     # changing any print parameters (including flow and temperature).
+    # Each slot also gets a filament_colour: the CLI sizes its filament list from
+    # filament_colour, and the stock Elegoo filament presets carry none. A 3MF
+    # without a long enough filament_colour list (a generic or hand-built
+    # 3MF; Bambu/Orca projects carry one) that puts filament 2+ on an object
+    # crashed ElegooSlicer 1.5.3.5 with 0xC0000005 (or "vector too long" /
+    # "bad allocation") and dropped filament 2+ parts to T0 (bd_3d-printing-nbfrz).
+    # The 3MF's own colours are kept per slot (a preset colour replaces them).
     if len(slot_files) > 1:
         named_slots = []
-        for n, source in enumerate(slot_files, 1):
-            with open(source, encoding="utf-8") as f:
+        colours = slot_colours(source, len(slot_files))
+        for n, slot_path in enumerate(slot_files, 1):
+            with open(slot_path, encoding="utf-8") as f:
                 slot = json.load(f)
             slot["name"] = f"{slot['name']} (slot {n})"
+            if not slot.get("filament_colour"):
+                slot["filament_colour"] = [colours[n - 1]]
             named = os.path.join(work, f"flat_filament_slot{n}.json")
             with open(named, "w", encoding="utf-8") as f:
                 json.dump(slot, f, indent=1)
@@ -919,6 +945,11 @@ SLICER_EXIT_HINTS = {
          "auto-arrange too). Place it fully inside, clear of the exclude zone, and pass "
          "--no-arrange",
     -100: "slicing error (e.g. a mesh with unmerged vertices)",
+    # 0xC0000005 access violation: the CLI crashed instead of reporting an error
+    -1073741819: "slicer crashed (access violation 0xC0000005). Seen with a 3MF that "
+                 "puts filament 2+ on an object while the loaded presets carry no "
+                 "filament_colour (fixed here since toolkit 1.4.1: each slot gets one). "
+                 "Bisect: same model with --slots 1, or one filament per object",
 }
 
 
