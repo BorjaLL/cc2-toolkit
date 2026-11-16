@@ -59,6 +59,18 @@ Only the CC2 machine is wired; stock firmware and multi-colour output from
 upstream are not checked (its tower writes `M220 S100`; see the 3d-printing
 migration plan). Not for printing until proven.
 
+### Profiles from a snapshot: `CC2_PROFILE_SNAPSHOT` (off by default)
+
+Unset, the flatten reads `ELEGOO_SLICER_DIR/resources/profiles`. Set it to a
+snapshot folder (an `Elegoo/` tree holding only the presets the flatten reads and
+their `inherits` ancestors, plus `manifest.json`: version, each file's sha256 and
+`closure_sha256`, the sha256 of the sorted `<relpath>\t<sha256>` lines) and the
+flatten reads that folder instead (upstream OrcaSlicer ships its profiles packed,
+so an install cannot be the source). Read once per process. A snapshot whose files
+differ from its manifest is refused before slicing; a matching one is recorded in
+`slice_result.json` as `profiles` (`profile_source()`). The slicer exe still comes
+from `ELEGOO_SLICER_DIR` or `CC2_SLICER_EXE`.
+
 Several models are sliced together: auto-arranged, and the slicer opens extra
 plates for what does not fit (one `plate_N.gcode` each).
 

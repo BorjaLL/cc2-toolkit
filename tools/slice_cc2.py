@@ -66,12 +66,88 @@ __all__ = ["TOOLKIT_VERSION", "API_VERSION", "SLICER_DIR", "EXE", "PROFILES", "M
            "EXIT_NO_OUTPUT", "RESULT_FILE", "SLICER_EXIT_HINTS", "slicer_exit_hint", "resolve_leaf", "flatten", "verify_stock",
            "SLICER_EXE_ENV", "ENGINE", "ENGINE_LIBS", "ENGINE_EXIT_HINTS", "engine_identity", "engine_stamp",
            "generated_by", "stamp_engine",
+           "PROFILE_SNAPSHOT_ENV", "profile_source", "check_snapshot", "snapshot_tree", "closure_sha256",
            "designer_setting", "slot_colours", "preflight_3mf", "adaptive_models", "move_to_name",
            "send_to_printer", "main"]
 
 SLICER_DIR = os.environ.get("ELEGOO_SLICER_DIR", r"C:\Program Files\ElegooSlicer")
 EXE = os.path.join(SLICER_DIR, "elegoo-slicer.exe")
-PROFILES = os.path.join(SLICER_DIR, "resources", "profiles")
+# --- profile source (bd_3d-printing-whkq3.12) -----------------------------------
+# CC2_PROFILE_SNAPSHOT unset (the default): the flatten reads the install's
+# resources/profiles, exactly as before. Set to a snapshot folder (an Elegoo/ tree with
+# only the files the flatten reads + manifest.json: version, each file's sha256, the
+# inheritance-closure hash; built by the wrapper, e.g. 3d-printing
+# tools/cc2-slicing/profile_snapshot.py): the flatten reads that folder instead, a slice
+# refuses a snapshot that does not match its manifest, and slice_result.json gets
+# "profiles" (profile_source()). Read once, at import, like CC2_SLICER_EXE.
+PROFILE_SNAPSHOT_ENV = "CC2_PROFILE_SNAPSHOT"
+SNAPSHOT_MANIFEST = "manifest.json"
+_SNAPSHOT_DIR = os.environ.get(PROFILE_SNAPSHOT_ENV) or None
+PROFILES = (os.path.abspath(_SNAPSHOT_DIR) if _SNAPSHOT_DIR
+            else os.path.join(SLICER_DIR, "resources", "profiles"))
+_profile_source = {}
+
+
+def _sha256_file(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def closure_sha256(files):
+    """The inheritance-closure hash: sha256 of the sorted '<relpath>\\t<sha256>' lines of
+    {relpath (forward slashes, under the profiles folder): file sha256}."""
+    import hashlib
+    text = "".join(f"{rel}\t{files[rel]}\n" for rel in sorted(files))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def snapshot_tree(root):
+    """{relpath: sha256} of every .json file under root/Elegoo (the files the flatten can read)."""
+    out = {}
+    for p in glob.glob(os.path.join(root, "Elegoo", "**", "*.json"), recursive=True):
+        out[os.path.relpath(p, root).replace(os.sep, "/")] = _sha256_file(p)
+    return out
+
+
+def check_snapshot(root):
+    """(manifest dict or None, [faults]) of a snapshot folder: the manifest names exactly the
+    .json files present, each with its sha256, and its closure_sha256 is theirs."""
+    try:
+        with open(os.path.join(root, SNAPSHOT_MANIFEST), encoding="utf-8") as f:
+            man = json.load(f)
+    except (OSError, ValueError) as ex:
+        return None, [f"no readable {SNAPSHOT_MANIFEST} in {root}: {ex}"]
+    want, have, faults = man.get("files") or {}, snapshot_tree(root), []
+    for rel in sorted(set(want) | set(have)):
+        if rel not in have:
+            faults.append(f"missing: {rel}")
+        elif rel not in want:
+            faults.append(f"not in the manifest: {rel}")
+        elif have[rel] != want[rel]:
+            faults.append(f"sha256 differs from the manifest: {rel}")
+    if not faults and closure_sha256(have) != man.get("closure_sha256"):
+        faults.append("closure_sha256 is not the hash of the listed files")
+    return man, faults
+
+
+def profile_source():
+    """Where the flatten reads profiles, resolved once: {"source": "install", "dir"} with the
+    env unset; with CC2_PROFILE_SNAPSHOT set {"source": "snapshot", "dir", "version",
+    "closure_sha256" (None when the check failed), "faults"}."""
+    import types
+    if not _profile_source:
+        if not _SNAPSHOT_DIR:
+            _profile_source.update(source="install", dir=PROFILES)
+        else:
+            man, faults = check_snapshot(PROFILES)
+            _profile_source.update(source="snapshot", dir=PROFILES, version=(man or {}).get("version"),
+                                   closure_sha256=None if faults else man.get("closure_sha256"),
+                                   faults=tuple(faults))
+    return types.MappingProxyType(dict(_profile_source))
 
 # --- slicer engine (bd_3d-printing-whkq3.6) ------------------------------------
 # CC2_SLICER_EXE unset (the default): the ElegooSlicer fork above slices, argv and outputs as
@@ -705,8 +781,15 @@ def main(argv=None, hooks=None):
                      "the slicer engine is unknown; point it at an ElegooSlicer or OrcaSlicer install")
     if not (a.dry_run or a.verify) and engine is None:
         need.insert(0, EXE)
+    if _SNAPSHOT_DIR:
+        src = profile_source()
+        if src["faults"]:
+            sys.exit(f"refused: profile snapshot {PROFILES} ({PROFILE_SNAPSHOT_ENV}) does not match its "
+                     f"{SNAPSHOT_MANIFEST}: " + "; ".join(src["faults"][:5]))
     for p in need:
         if not os.path.exists(p):
+            if _SNAPSHOT_DIR and p != EXE:
+                sys.exit(f"not found: {p}\nnot in the profile snapshot {PROFILES} ({PROFILE_SNAPSHOT_ENV}).")
             sys.exit(f"not found: {p}\nElegooSlicer install not found or incomplete. "
                      f"Set ELEGOO_SLICER_DIR to its install folder (currently {SLICER_DIR}).")
 
@@ -994,6 +1077,8 @@ def main(argv=None, hooks=None):
         result["adaptive"] = adaptive
     if engine_record is not None:
         result["engine"] = engine_record
+    if _SNAPSHOT_DIR:
+        result["profiles"] = dict(profile_source(), faults=[])
     print("slicing ->", a.out)
     try:
         with open(log, "w", encoding="utf-8") as lf:

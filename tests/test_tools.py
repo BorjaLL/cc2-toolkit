@@ -863,5 +863,69 @@ class TestApi(unittest.TestCase):
             self.assertTrue(rel[-1].endswith(".json"), p)
 
 
+class TestProfileSnapshot(unittest.TestCase):
+    """bd_3d-printing-whkq3.12: CC2_PROFILE_SNAPSHOT points the flatten at a snapshot folder
+    (Elegoo/ tree + manifest.json); unset = the install, nothing recorded; a snapshot that
+    does not match its manifest is refused before slicing; a matching one is recorded."""
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.snap = os.path.join(self.d, "snap")
+        p = os.path.join(self.snap, "Elegoo", "machine", "m.json")
+        os.makedirs(os.path.dirname(p))
+        write(p, b'{"name": "m"}')
+        files = sc.snapshot_tree(self.snap)
+        self.man = {"version": "1.5.3.5", "files": files, "closure_sha256": sc.closure_sha256(files)}
+        write(os.path.join(self.snap, sc.SNAPSHOT_MANIFEST), json.dumps(self.man).encode())
+        self.saved = (sc._SNAPSHOT_DIR, sc.PROFILES, dict(sc._profile_source))
+
+    def tearDown(self):
+        sc._SNAPSHOT_DIR, sc.PROFILES = self.saved[:2]
+        sc._profile_source.clear()
+        sc._profile_source.update(self.saved[2])
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def use(self, root):
+        sc._SNAPSHOT_DIR, sc.PROFILES = root, root
+        sc._profile_source.clear()
+
+    def test_unset_is_the_install(self):
+        if os.environ.get(sc.PROFILE_SNAPSHOT_ENV) is None:
+            self.assertEqual(dict(sc.profile_source()), {"source": "install", "dir": sc.PROFILES})
+
+    def test_closure_hash_is_order_free_and_content_bound(self):
+        a = sc.closure_sha256({"Elegoo/a.json": "1", "Elegoo/b.json": "2"})
+        self.assertEqual(a, sc.closure_sha256({"Elegoo/b.json": "2", "Elegoo/a.json": "1"}))
+        self.assertNotEqual(a, sc.closure_sha256({"Elegoo/a.json": "1", "Elegoo/b.json": "3"}))
+
+    def test_matching_snapshot_is_recorded(self):
+        self.use(self.snap)
+        src = sc.profile_source()
+        self.assertEqual((src["source"], src["closure_sha256"], src["faults"]),
+                         ("snapshot", self.man["closure_sha256"], ()))
+        with FakeSlicer(tempfile.mkdtemp(dir=self.d)):
+            out = os.path.join(self.d, "out")
+            model = os.path.join(self.d, "m.stl")
+            write(model, b"")
+            self.assertEqual(run_main([model, "--out", out]), sc.EXIT_OK)
+        with open(os.path.join(out, sc.RESULT_FILE), encoding="utf-8") as f:
+            rec = json.load(f)["profiles"]
+        self.assertEqual((rec["source"], rec["closure_sha256"]), ("snapshot", self.man["closure_sha256"]))
+
+    def test_tampered_or_extra_file_is_refused(self):
+        write(os.path.join(self.snap, "Elegoo", "machine", "m.json"), b'{"name": "m2"}')
+        write(os.path.join(self.snap, "Elegoo", "extra.json"), b"{}")
+        self.use(self.snap)
+        self.assertEqual(sorted(sc.profile_source()["faults"]),
+                         ["not in the manifest: Elegoo/extra.json", "sha256 differs from the manifest: Elegoo/machine/m.json"])
+        self.assertIsNone(sc.profile_source()["closure_sha256"])
+        with FakeSlicer(tempfile.mkdtemp(dir=self.d)) as fake:
+            model = os.path.join(self.d, "m.stl")
+            write(model, b"")
+            code = run_main([model, "--out", os.path.join(self.d, "out2")])
+        self.assertIn("does not match its manifest", str(code))
+        self.assertEqual(fake.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
