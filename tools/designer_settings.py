@@ -51,13 +51,29 @@ ENGINE_ENUMS = {
     },
 }
 # Keys the printer's fork defines that the engine does not (its config block drops them).
+# prime_tower_lift_height: absent from OrcaSlicer.dll 2.5.1 and from its CONFIG_BLOCK (whkq3.10).
 ENGINE_DROPS = {('orca', 'cc2'): {'bed_texture_area', 'filament_colour_type', 'silent_mode', 'support_mms',
-                                  'support_wan_network'}}
-# Fork workarounds kept on for the orca engine without an upstream slice that shows they are
-# still needed (or harmless): support_object_skip_flush off / label_crash refusal, ooze
-# prevention refusal, NEG_AUTO values, the LOADER renames. Listed so they are re-checked
-# before an engine promotion, not dropped silently.
-ENGINE_UNVERIFIED = {'orca': ('support_object_skip_flush', 'ooze_prevention', 'NEG_AUTO', 'LOADER')}
+                                  'support_wan_network', 'prime_tower_lift_height'}}
+# Fork workarounds checked on upstream OrcaSlicer 2.5.1 (bd_3d-printing-whkq3.10, 2026-11-16:
+# four_colour_test.3mf with the key patched, flat CC2 profiles, throwaway --datadir; "without"
+# = the same flat files with the designer value put back). All stay on for the orca engine.
+ENGINE_VERIFIED = {'orca': {
+    'support_object_skip_flush': 'needed: =1 with exclude_object=1 exits -100 "Unknown label object id!"',
+    'ooze_prevention': 'needed: =1 on the single-nozzle CC2 with a prime tower exits -51 (same message)',
+    # the 3MF -1 also leaks when the flat profile omits the key ("Param values in 3mf/config error")
+    'NEG_AUTO raft_first_layer_expansion': 'needed: -1 exits -18 "-1 not in range [0, 3.40282e+38]"',
+    'NEG_AUTO tree_support_wall_count': 'harmless: -1 is read as 0, tree-support toolpaths equal to 0',
+    'NEG_AUTO prime_tower_lift_height': 'harmless: upstream does not define the key (ENGINE_DROPS)',
+    'LOADER': 'same as the fork: wall_infill_order, rotate_solid_infill_direction and the three '
+              '*_filament renames give the fork CONFIG_BLOCK values (1 -> 0 too)',
+}}
+# Kept on for the orca engine without an upstream slice that shows they are still needed (or
+# harmless). Listed so they are re-checked before an engine promotion, not dropped silently.
+# ironing_fan_speed -1 is accepted (written -1) but its meaning against 0 was not compared;
+# the filament_* NEG_AUTO keys were not sliced as scalars (Bambu writes them as lists).
+ENGINE_UNVERIFIED = {'orca': ('NEG_AUTO ironing_fan_speed', 'NEG_AUTO filament_ramming_volumetric_speed',
+                              'NEG_AUTO filament_ramming_volumetric_speed_nc',
+                              'NEG_AUTO filament_tower_interface_print_temp')}
 
 
 def slicer_name(printer='cc2', engine='fork'):
@@ -141,7 +157,7 @@ def read(path, plate=None):
         return source
 
 
-def reason(key, value, machine=(), filament=(), printer='cc2'):
+def reason(key, value, machine=(), filament=(), printer='cc2', engine='fork'):
     if key in IDENTITY or key.endswith('_settings_id'):
         return 'destination preset identity'
     if key in machine or key.startswith(('machine_', 'printer_', 'extruder_', 'nozzle_')) or key == 'curr_bed_type':
@@ -165,7 +181,7 @@ def reason(key, value, machine=(), filament=(), printer='cc2'):
             and str(machine.get('single_extruder_multi_material')) == '1'):
         return 'single-nozzle machine: ooze prevention needs separate nozzles (CLI exit -51)'
     if printer == 'cc2' and key == 'support_object_skip_flush' and _on(value):
-        return SKIP_FLUSH_REASON
+        return skip_flush_reason(printer, engine)
     if key in NEG_AUTO and str(value) == '-1':
         return 'Bambu negative auto value rejected by destination CLI'
     return None
@@ -176,17 +192,25 @@ def reason(key, value, machine=(), filament=(), printer='cc2'):
 # with exclude_object on and print_sequence by layer, encodes them for every extruder of every
 # layer when support_object_skip_flush is on: the empty list throws "Unknown label object id!"
 # and the CLI exits -100 on the first layer. Bambu Studio 2.x P2S / H2S / A2L / X2D 3MFs carry both on.
-SKIP_FLUSH_REASON = ('Bambu skip-object flush (M624 label ids, Bambu firmware only): ElegooSlicer '
-                     'stops with "Unknown label object id!" (exit -100) when it is on with '
-                     'exclude_object on a non-Bambu printer; off (bd_3d-printing-foavq)')
+# Upstream OrcaSlicer 2.5.1 has the same stop (exit -100, whkq3.10), so the text names the
+# engine's slicer; the fork text (SKIP_FLUSH_REASON) is unchanged.
+_SKIP_FLUSH = ('Bambu skip-object flush (M624 label ids, Bambu firmware only): {slicer} '
+               'stops with "Unknown label object id!" (exit -100) when it is on with '
+               'exclude_object on a non-Bambu printer; off (bd_3d-printing-foavq)')
+SKIP_FLUSH_REASON = _SKIP_FLUSH.format(slicer='ElegooSlicer')
 
 
-def label_crash(effective):
-    """Refusal message when the effective CC2 process would hit the ElegooSlicer
+def skip_flush_reason(printer='cc2', engine='fork'):
+    """SKIP_FLUSH_REASON naming the slicer of `engine` (ElegooSlicer for the CC2 fork)."""
+    return SKIP_FLUSH_REASON if engine == 'fork' else _SKIP_FLUSH.format(slicer=slicer_name(printer, engine))
+
+
+def label_crash(effective, engine='fork'):
+    """Refusal message when the effective CC2 process would hit the
     "Unknown label object id!" stop (support_object_skip_flush and exclude_object both on,
-    see SKIP_FLUSH_REASON), else None."""
+    see SKIP_FLUSH_REASON; ElegooSlicer and upstream OrcaSlicer 2.5.1), else None."""
     if _on(effective.get('support_object_skip_flush')) and _on(effective.get('exclude_object')):
-        return ('refused: support_object_skip_flush=1 with exclude_object=1 stops ElegooSlicer '
+        return (f'refused: support_object_skip_flush=1 with exclude_object=1 stops {slicer_name("cc2", engine)} '
                 'with "Unknown label object id!" (exit -100) on a non-Bambu printer; set '
                 'support_object_skip_flush=0 or exclude_object=0 (bd_3d-printing-foavq)')
     return None
@@ -274,7 +298,7 @@ def process(source, machine=(), filament=(), printer='cc2', engine='fork'):
     destination meaning (translate)."""
     mapped = translate(source, printer, engine)
     out = {k: v for k, v in source.items()
-           if k not in mapped and reason(k, v, machine, filament, printer) is None}
+           if k not in mapped and reason(k, v, machine, filament, printer, engine) is None}
     for entry in mapped.values():
         out.update(entry['to'])
     return out
@@ -420,7 +444,7 @@ def audit(source, effective, reasons=None, machine=(), filament=(), printer='cc2
     loader = dict(LOADER['both'], **LOADER.get(printer, {}))
     for k, v in sorted(source.items()):
         used = effective.get(k)
-        why = (reasons or {}).get(k) or reason(k, v, machine, filament, printer)
+        why = (reasons or {}).get(k) or reason(k, v, machine, filament, printer, engine)
         same = k in effective and equivalent(v, used)
         if not same and k not in effective and (k in mapped or k in loader) and not (reasons or {}).get(k):
             rows.append(_mapped_row(k, v, mapped.get(k), loader.get(k), effective, reasons or {}, printer, engine))
@@ -695,7 +719,7 @@ def report(path, sources, reasons=None, machine=(), filament=(), printer='cc2', 
         for (scope, key), value in sorted(before.items()):
             used = after.get((scope, key))
             same = used is not None and equivalent(value, used)
-            why = reason(key, value, machine, filament, printer)
+            why = reason(key, value, machine, filament, printer, engine)
             if not same and printer == 'u1' and '/plate:' in scope and used is None:
                 if tools is None:
                     tools = plate_tools(target, path, effective)

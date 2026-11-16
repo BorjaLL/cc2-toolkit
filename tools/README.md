@@ -46,8 +46,14 @@ same flattened profiles (still read from `ELEGOO_SLICER_DIR`) with that engine:
   `; cc2_engine = orca 2.5.1 <exe sha256[:12]>` line after the designer line, and
   `.designer.json` an `engine` key. G-code that names another slicer than the
   engine is removed (status `engine_mismatch`, exit 1).
-- Exit codes: upstream also uses -5 (an `inherits` it cannot resolve); -5, -17
-  and -50 were provoked on 2.5.1, the other hints say "not yet seen on orca".
+- Exit codes: upstream also uses -5 (an `inherits` it cannot resolve), -18 (a
+  value out of range), -51 (refused setting combination) and -64 (part too close to
+  the exclude zone after arrange); -5, -17, -18, -24, -50, -51, -64 and -100 were
+  provoked on 2.5.1 (-100: point bed contact, open mesh, skip-object flush label
+  stop), -21 says "not yet seen on orca".
+- Fork workarounds checked on 2.5.1 (`designer_settings.ENGINE_VERIFIED`): the
+  skip-object flush, ooze prevention and raft -1 replacements are still needed
+  (exit -100, -51, -18), the loader renames give the fork values; all stay on.
 
 Only the CC2 machine is wired; stock firmware and multi-colour output from
 upstream are not checked (its tower writes `M220 S100`; see the 3d-printing

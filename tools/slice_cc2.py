@@ -933,7 +933,10 @@ def main(argv=None, hooks=None):
     if a.model.lower().endswith(".3mf"):
         preflight_3mf(a.model, p_merged)
     # 3MF keys the flat profile omits reach the CLI from the project config.
-    refusal = designer.label_crash(dict(source, **p_merged))
+    if engine is None:
+        refusal = designer.label_crash(dict(source, **p_merged))
+    else:   # upstream OrcaSlicer 2.5.1 stops the same way (whkq3.10)
+        refusal = designer.label_crash(dict(source, **p_merged), engine["engine"])
     if refusal:
         sys.exit(refusal)
     engine_record, datadir = None, None
@@ -1013,7 +1016,9 @@ def main(argv=None, hooks=None):
         with open(log, encoding="utf-8", errors="replace") as lf:
             label_stop = "Unknown label object id" in lf.read()
         if label_stop:
-            hint = designer.SKIP_FLUSH_REASON.replace("; off (", " (")
+            text = (designer.SKIP_FLUSH_REASON if engine is None
+                    else designer.skip_flush_reason("cc2", engine["engine"]))
+            hint = text.replace("; off (", " (")
         if hint:
             result["slicer_exit_hint"] = hint
             print(f"slicer exit {result['slicer_exit_signed']}: {hint}")
@@ -1156,16 +1161,32 @@ SLICER_EXIT_HINTS = {
 # -50 part off the bed with --arrange 0, and a 3x card with --arrange 1 (both engines;
 # no -21 there); -17 process compatible_printers naming another printer (both engines);
 # -5 a process 'inherits' upstream cannot resolve ("Preset was not found in the loaded
-# bundle"; the fork slices that file with exit 0). Every other code is assumed to mean the
-# same as on the fork, not provoked; the 0xC0000005 hint is fork-specific (ElegooSlicer
-# filament_colour crash) and is not reused.
+# bundle"; the fork slices that file with exit 0). bd_3d-printing-whkq3.10 (2026-11-16):
+# -24 a 3MF whose Application is newer (OrcaSlicer-9.9.9, BambuStudio-02.07.01.57) without
+# --allow-newer-file (slices with it); -100 "Unknown label object id!" (skip-object flush),
+# a cube standing on one corner ("empty first layer", bead 40lk) and a cube with no bottom
+# face ("No layers were detected"); -18 a value out of range (raft_first_layer_expansion
+# -1); -51 a refused setting combination (ooze prevention, single nozzle, prime tower);
+# -64 a 250-256 mm square part with --arrange 1 ("too close to exclusion area"). -21 was
+# not seen: 250-300 mm parts, a 400 mm tall one and two 200 mm squares with --arrange 1 gave
+# -64, -50 or a second plate. Codes not proven keep the fork meaning, marked "not yet
+# seen"; the 0xC0000005 hint is fork-specific (ElegooSlicer filament_colour crash) and is
+# not reused.
 ENGINE_EXIT_HINTS = {
     "fork": SLICER_EXIT_HINTS,
     "orca": {**{k: v for k, v in SLICER_EXIT_HINTS.items() if k != -1073741819},
              -5: "profile not accepted: an 'inherits' preset upstream OrcaSlicer cannot resolve "
-                 "(it reads no vendor tree here); load flattened profiles with no 'inherits'"},
+                 "(it reads no vendor tree here); load flattened profiles with no 'inherits'",
+             -18: "a setting value out of its range (e.g. a Bambu auto -1); slice.log names the key",
+             -51: "setting combination refused by the slicer's validation (e.g. ooze prevention on "
+                  "a single-nozzle prime tower); slice.log has the message",
+             -64: "part too close to the bed exclude zone after auto-arrange (a part of ~250 mm or "
+                  "more on the 256 mm bed); make it smaller or place it and pass --no-arrange",
+             -100: "slicing error: e.g. a part touching the bed at a point or edge (empty first "
+                   "layer: lay it flat or add supports), an open mesh (no layers), or the "
+                   "skip-object flush label stop; slice.log has the message"},
 }
-ENGINE_EXIT_PROVEN = {"orca": (-5, -17, -50)}
+ENGINE_EXIT_PROVEN = {"orca": (-5, -17, -18, -24, -50, -51, -64, -100)}
 
 
 def slicer_exit_hint(code, no_arrange=False, engine="fork"):

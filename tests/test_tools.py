@@ -434,6 +434,43 @@ class TestEngineSwitch(unittest.TestCase):
         self.assertIsNone(sc.slicer_exit_hint(-5))
         self.assertIsNone(sc.slicer_exit_hint(-1073741819, engine="orca"))
 
+    def test_exit_codes_provoked_on_upstream(self):
+        # whkq3.10: -18, -24, -51, -64, -100 seen on 2.5.1; -21 still not
+        for code in (-18, -24, -51, -64, -100):
+            self.assertIsNotNone(sc.slicer_exit_hint(code, engine="orca"), code)
+            self.assertNotIn("not yet seen", sc.slicer_exit_hint(code, engine="orca"), code)
+        self.assertIn("point", sc.slicer_exit_hint(-100, engine="orca"))
+        self.assertIn("exclude zone", sc.slicer_exit_hint(-64, engine="orca"))
+        self.assertIn("not yet seen on orca", sc.slicer_exit_hint(-21, engine="orca"))
+        # fork table unchanged
+        self.assertEqual(sc.slicer_exit_hint(-100), "slicing error (e.g. a mesh with unmerged vertices)")
+        self.assertEqual(sc.slicer_exit_hint(-24), "3MF from a newer slicer (pass --allow-newer-file)")
+        for code in (-18, -51, -64):
+            self.assertIsNone(sc.slicer_exit_hint(code))
+
+    def test_label_crash_refusal_names_the_engine(self):
+        argv = ["--dry-run", "--proc", "support_object_skip_flush=1", "--proc", "exclude_object=1"]
+        for engine, name in ((sc.FrozenEngine(None), "ElegooSlicer"), (sc.FrozenEngine(self.install()), "OrcaSlicer")):
+            sc.ENGINE = engine
+            code, fake = self.slice("", argv)
+            self.assertIn(f"stops {name} with", str(code))
+            self.assertEqual(fake.calls, [])
+
+    def test_label_stop_hint_names_the_engine(self):
+        class Label(FakeSlicer):
+            def call(slf, cmd, stdout=None, stderr=None):
+                stdout.write("Unknown label object id!\nSlic3r::CLI::run found error, exit\n")
+                return (1 << 32) - 100
+        for engine, name in ((sc.FrozenEngine(None), "ElegooSlicer"), (sc.FrozenEngine(self.install()), "OrcaSlicer")):
+            sc.ENGINE = engine
+            with Label(tempfile.mkdtemp(dir=self.d)):
+                code = run_main([self.model, "--out", self.out])
+            self.assertEqual(code, sc.EXIT_SLICER_FAILED)
+            hint = self.result()["slicer_exit_hint"]
+            self.assertIn(f"{name} stops", hint)
+            if name == "ElegooSlicer":
+                self.assertEqual(hint, sc.designer.SKIP_FLUSH_REASON.replace("; off (", " ("))
+
 
 class TestSlotColours(unittest.TestCase):
     """bd_3d-printing-nbfrz: ElegooSlicer 1.5.3.5 sizes its filament list from filament_colour.

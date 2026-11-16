@@ -378,6 +378,63 @@ class EngineAxisTest(unittest.TestCase):
         self.assertEqual(ds.translate(BAMBU, 'cc2', 'orca')['ironing_direction']['to'],
                          ds.translate(BAMBU, 'cc2')['ironing_direction']['to'])
 
+    FORK_SKIP = ('Bambu skip-object flush (M624 label ids, Bambu firmware only): ElegooSlicer '
+                 'stops with "Unknown label object id!" (exit -100) when it is on with '
+                 'exclude_object on a non-Bambu printer; off (bd_3d-printing-foavq)')
+    FORK_LABEL = ('refused: support_object_skip_flush=1 with exclude_object=1 stops ElegooSlicer '
+                  'with "Unknown label object id!" (exit -100) on a non-Bambu printer; set '
+                  'support_object_skip_flush=0 or exclude_object=0 (bd_3d-printing-foavq)')
+
+    def test_skip_flush_texts_name_the_engine(self):
+        # whkq3.10: upstream 2.5.1 stops "Unknown label object id!" (-100) too; the fork text is unchanged
+        both = {'support_object_skip_flush': '1', 'exclude_object': '1'}
+        self.assertEqual(ds.SKIP_FLUSH_REASON, self.FORK_SKIP)
+        self.assertEqual(ds.reason('support_object_skip_flush', '1'), self.FORK_SKIP)
+        self.assertEqual(ds.reason('support_object_skip_flush', '1', engine='fork'), self.FORK_SKIP)
+        self.assertEqual(ds.label_crash(both), self.FORK_LABEL)
+        self.assertEqual(ds.label_crash(both, 'fork'), self.FORK_LABEL)
+        for text in (ds.reason('support_object_skip_flush', '1', engine='orca'), ds.label_crash(both, 'orca'),
+                     ds.skip_flush_reason('cc2', 'orca')):
+            self.assertIn('OrcaSlicer', text)
+            self.assertNotIn('ElegooSlicer', text)
+            self.assertIn('foavq', text)
+        self.assertIsNone(ds.label_crash({'support_object_skip_flush': '0', 'exclude_object': '1'}, 'orca'))
+        rows = {r['key']: r for r in ds.audit(dict(BAMBU, support_object_skip_flush='1'), {}, engine='orca')}
+        self.assertIn('OrcaSlicer stops', rows['support_object_skip_flush']['reason'])
+        rows = {r['key']: r for r in ds.audit(dict(BAMBU, support_object_skip_flush='1'), {})}
+        self.assertEqual(rows['support_object_skip_flush']['reason'], self.FORK_SKIP)
+
+    def test_upstream_checked_workarounds_stay_on(self):
+        # whkq3.10 upstream slices: skip flush -100, ooze -51, raft -1 -18 -> all still applied for orca
+        verified = ds.ENGINE_VERIFIED['orca']
+        for item in ('support_object_skip_flush', 'ooze_prevention', 'NEG_AUTO raft_first_layer_expansion'):
+            self.assertTrue(verified[item].startswith('needed'), item)
+        self.assertTrue(verified['LOADER'].startswith('same as the fork'))
+        self.assertFalse(set(verified) & set(ds.ENGINE_UNVERIFIED['orca']))
+        src = dict(BAMBU, ooze_prevention='1', support_object_skip_flush='1', raft_first_layer_expansion='-1',
+                   tree_support_wall_count='-1', prime_tower_lift_height='-1')
+        kept = ds.process(src, self.SINGLE, engine='orca')
+        for key in ('ooze_prevention', 'support_object_skip_flush', 'raft_first_layer_expansion',
+                    'tree_support_wall_count', 'prime_tower_lift_height'):
+            self.assertNotIn(key, kept)
+        self.assertEqual(kept, ds.process(src, self.SINGLE))
+
+    def test_orca_drops_prime_tower_lift_height(self):
+        # whkq3.10: not in OrcaSlicer.dll 2.5.1 nor in its CONFIG_BLOCK; the fork defines it
+        self.assertIn('ElegooSlicer-only key: OrcaSlicer', ds.unsupported_reason('prime_tower_lift_height', 'cc2', 'orca'))
+        self.assertNotIn('ElegooSlicer-only', ds.unsupported_reason('prime_tower_lift_height', 'cc2'))
+
+    def test_loader_renames_hold_on_orca(self):
+        # whkq3.10: upstream wrote wall_sequence outer wall/inner wall and solid_infill_rotate_template
+        # 0,90 for these designer keys, and the *_filament ids as the fork does (1 -> 0)
+        src = {'wall_infill_order': 'infill/outer wall/inner wall', 'rotate_solid_infill_direction': '1',
+               'wall_filament': '1', 'solid_infill_filament': '2'}
+        out = {'wall_sequence': 'outer wall/inner wall', 'solid_infill_rotate_template': '0,90',
+               'outer_wall_filament_id': '0', 'internal_solid_filament_id': '2'}
+        for engine in ('fork', 'orca'):
+            rows = {r['key']: r for r in ds.audit(src, out, engine=engine)}
+            self.assertEqual({k: r['status'] for k, r in rows.items()}, dict.fromkeys(src, 'mapped'), engine)
+
     def test_engine_values(self):
         prof = {'ironing_type': 'no_ironing', 'ensure_vertical_shell_thickness': 'enabled',
                 'enable_arc_fitting': '1', 'fuzzy_skin': 'external', 'nozzle_volume_type': ['Standard']}
